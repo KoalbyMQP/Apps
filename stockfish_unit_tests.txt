@@ -1,0 +1,86 @@
+# test_calculator.py
+import unittest
+from stockfish import Stockfish
+import os
+
+#Make sure to test Stockfish Integration with the machine
+
+#Test 1: Make sure stockfish is installed at the given path
+class TestStockfish(unittest.TestCase):
+
+    def setUp(self):
+        self.path = "TEST - FIX WHEN TIME"
+
+    #Make sure that the file exists first, so the give path is correct
+    def test_path_exists(self, path):
+        self.assertTrue(os.path.isfile(path)) #Make sure that the file exists
+        
+    #Make sure that the engine is installed and working correctly - testing with a simple mate in 1 case
+    def test_stockfish_installation(self):
+        the_fish = Stockfish(path=self.path)
+        the_fish.set_fen_position("k7/8/K7/8/8/8/8/7R w - - 0 1") #FEN with 1 mate in 1 - make sure machine finds it
+        move = the_fish.get_best_move()
+        self.assertEqual(move, "h1h8")
+    
+    #test a sequence of moves - make sure that the engine can accurately track fen with moves
+    #Test case is a brief 4 move sequence just making sure the engine can track multiple moves
+    def test_move_sequence(self):
+        the_fish = Stockfish(path=self.path)
+        the_fish.set_fen_position("INSERT STARTING FEN HERE")
+        moves=["e2e4","e7e5","g1f3","b8c6","f1c4","f8c5","e1g1","g8f6"]
+        the_fish.make_moves_from_current_position(moves)
+        self.assertEqual(the_fish.get_fen_position,"r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQ1RK1 w kq - 6 5") #Trying a brief sequence of moves
+        
+
+    def generate_legal_moves(self):
+        self.assertEqual(2,2)
+        #Make sure that the program can return the legal moves correctly
+
+    def set_path(self, path):
+        self.path = path
+
+if __name__ == '__main__':
+    t = TestStockfish(unittest.TestCase)
+    t.set_path("path")
+    
+    unittest.main()
+
+
+          #we need to wait for a signal from the clock
+        # print(2)
+    # a = fen_to_arr("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    # b = fen_to_arr("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1")
+    # s = compare_arrays(a, b)
+    # print(s)
+    # print(board_to_piece_coords((4, 4)))
+    # print(board_to_piece_coords((6, 4)))
+    # the_fish = Stockfish(path=path, depth=15)
+    # the_fish.set_fen_position(STARTING_FEN)
+    # # print(chess.Board())
+    # print(the_fish.is_move_correct("NOT A MOVE"))
+    # print(the_fish.is_move_correct(None))
+    # print(the_fish.is_move_correct(42))
+
+    # previous_fen = STARTING_FEN
+    # #If the robot is playing as white - camera check
+    # bot_move = True
+    # #basic move
+    # while True:
+    #     if bot_move:
+    #         move = the_fish.get_best_move()
+    #         print("BEST MOVE")
+    #         print(move)
+    #         the_fish.make_moves_from_current_position([move])
+    #         print(the_fish.get_board_visual())
+    #         bot_move = False
+    #     else:
+    #         human_move = input()
+    #         print(the_fish.is_move_correct("OBVIOUSLY WRONG MOVE"))
+    #         if(the_fish.is_move_correct(human_move)):
+    #             print("valid move")
+    #             the_fish.make_moves_from_current_position([human_move])
+    #             print(the_fish.get_fen_position())
+    #             bot_move = True
+    #         else:
+    #             print("CHEATER!!!")
+            #check if move is castling

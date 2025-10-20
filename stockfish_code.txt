@@ -1,0 +1,194 @@
+from stockfish import Stockfish
+import re
+
+#Path of the stockfish engine - required
+#Ignore rolint path goes over the line limit
+# rolint: ignore
+
+#TODO: Change file system to not be hard coded
+#Make sure to standardize dependencies
+STOCKFISH_PATH: str = "C:\\Users\\Max\\Downloads\\Stockfish_Engine\\stockfish\\stockfish-windows-xe86-64-avx2.exe"
+#ALWAYS CONSTANT
+STARTING_FEN: str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+REGEX_POSITION_PATTERN = r"^([prnbqkPRNBQK1-8]+(?:/[prnbqkPRNBQK1-8]+){7})(?:\s|$)"
+REGEX_EN_PASSANT_PATTERN = r"^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)"
+
+BOT_COLOR = "WHITE"
+
+NUM_SQUARES = 8
+EMPTY = 0
+
+#Takes in an array of pieces, and converts the pieces to the fen notation according to the array
+#Note: Currently ignores other information such as castling restrictions
+def arr_to_FEN(pieces: list[list[str]]) -> str:
+    fen = ""
+    for row in pieces:
+        curr_length = 0
+        for square in row:
+            if square == 0:
+                curr_length += 1
+            else:
+                if curr_length > 0:
+                    fen += str(curr_length)
+                    curr_length = 0
+                fen += square
+        if curr_length > 0:
+            fen += str(curr_length)
+        fen += "/"
+    return fen[:-1]
+
+#Takes in a FEN notation and returns an 8x8 array of the piece locations:
+#fen: Must be a valid position in FEN notation for chess.
+def fen_to_arr(fen) -> list[list[str]]:
+    #Regex pattern match to only take the piece locations from the fen
+    #Evil regex pattern - thank you chat GPT lol
+    fen_pattern = re.compile(REGEX_POSITION_PATTERN)
+
+    #Eliminate the other metadata from the FEN
+    piece_locations = fen_pattern.match(fen).group(1)
+
+    #Break up the position rank by rank
+    ranks = piece_locations.split("/")
+
+    #Initialize an empy 8x8 array
+    board = [[0 for row in range(NUM_SQUARES)] for col in range(NUM_SQUARES)]
+    #Iterate through the rows, and update the board
+    rank_num = 0
+    for rank in ranks:
+        col = 0
+        for ch in rank:
+            print(ch)
+            if ch.isdigit():
+                col += int(ch)
+            else:
+                print(rank_num, col)
+                board[rank_num][col] = ch
+                col += 1
+        rank_num += 1
+    return board
+
+#Takes two arrays, and checks the different squares in order to find what has changed    
+def compare_arrays(previous: list[list[str]], current: list[list[str]]) -> list[tuple[int, int]]:
+    squares = []
+
+    for row in range(NUM_SQUARES):
+        for col in range(NUM_SQUARES):
+            if previous[row][col] != current[row][col]:
+                squares.append((row, col))
+
+    return squares
+
+#Given FEN notation with an en passant in the position, return the square containing this position
+def get_en_passant_square(fen: str):
+    
+    #more regex shenanigans - thanks again chat gpt
+    match = re.match(r"^(\S+)\s+(\S+)\s+(\S+)\s+(\S+)", fen)
+
+    if match:
+        en_passant_square = match.group(4) #location of the regex square
+        print("En passant square:", en_passant_square)
+    else:
+        print("Invalid FEN")
+
+        return 0
+
+
+def get_move(squares, stockfish_bot:  Stockfish):
+    coordinates = []
+    white_pieces = [Stockfish.Piece.WHITE_PAWN, Stockfish.Piece.WHITE_KNIGHT, Stockfish.Piece.WHITE_BISHOP, Stockfish.Piece.WHITE_ROOK, Stockfish.Piece.WHITE_QUEEN, Stockfish.Piece.WHITE_KING]
+    for square in squares:
+        coordinates.append(board_to_piece_coords(square))
+    if len(squares) == 4:
+        #castling - only 4 cases hard code the different pairs
+        if ("e1" in coordinates) and ("g1" in coordinates):
+            return "e1g1"
+        elif ("e1" in coordinates) and ("c1" in coordinates):
+            return "e1c1"
+        elif ("e8" in coordinates) and ("g8" in coordinates):
+            return "e8g8"
+        else:
+            return "e8c8"
+    elif len(squares) == 3:
+        print("en passant detected")
+        en_passant_square = get_en_passant_square(stockfish_bot.get_fen_position())
+        if coordinates[0] == en_passant_square:
+            if stockfish_bot.get_what_is_on_square(coordinates[1]) is None:
+                return coordinates[1] + coordinates[2]
+            else:
+                return coordinates[2] + coordinates[1]
+        elif coordinates[1] == en_passant_square:
+            if stockfish_bot.get_what_is_on_square(coordinates[0]) is None:
+                return coordinates[0] + coordinates[2]
+            else:
+                return coordinates[2] + coordinates[0]
+        else:
+            if stockfish_bot.get_what_is_on_square(coordinates[0]) is None:
+                return coordinates[0] + coordinates[1]
+            else:
+                return coordinates[1] + coordinates[0]
+    else:
+        if stockfish_bot.get_what_is_on_square(square=coordinates[0]) is None:
+            return coordinates[1] + coordinates[0]
+        elif stockfish_bot.get_what_is_on_square(square=coordinates[1]) is None:
+            return coordinates[0] + coordinates[1]
+        else:
+            piece_1 = stockfish_bot.get_what_is_on_square(square=coordinates[0])
+            if piece_1 in white_pieces:
+                return coordinates[1] + coordinates[0]
+            else:
+                return coordinates[0] + coordinates[1]
+
+
+#Transforms 2D piece coordinates 
+#coords: A tuple of the board coordinates
+#Internal method - not to be used by robot
+def board_to_piece_coords(coords):
+    files = ["a","b","c","d","e","f","g","h"]
+    file = files[coords[1]]
+
+    rank = str(NUM_SQUARES - coords[0])
+    return file+rank
+
+#TODO
+def get_legal_moves(fen):
+    return 0
+    #Make sure to return all legal moves for this position
+
+#Various test code for now
+if __name__ == "__main__":
+    robot_turn = True
+    the_fish = Stockfish(path="C:\\Users\\Max\\Downloads\\Stockfish_Engine\\stockfish\\stockfish-windows-x86-64-avx2.exe")
+    the_fish.set_fen_position(STARTING_FEN)
+    while True:
+
+        if robot_turn:
+            move = the_fish.get_best_move()
+            move_type = ""
+            if the_fish.will_move_be_a_capture(move) == Stockfish.Capture.NO_CAPTURE:
+                move_type = "NORMAL" #we need to track the move type and the move itself
+            else:
+                if the_fish.will_move_be_a_capture(move) == Stockfish.Capture.DIRECT_CAPTURE:
+                    move_type = "Capture: Normal"
+                elif the_fish.will_move_be_a_capture(move) == Stockfish.Capture.EN_PASSANT:
+                    move_type = "Capture: EP"
+
+            data = (move, move_type) #track the move and what kind of move it is
+            the_fish.make_moves_from_current_position([move])
+            print(the_fish.get_board_visual())
+            robot_turn = False
+            #wWait for the human move here
+            #the robot needs to make a  move
+        else:
+            current_fen = input("Enter fen notation\n")
+            previous_fen = the_fish.get_fen_position()
+            different_squares = compare_arrays(fen_to_arr(previous_fen), fen_to_arr(current_fen))
+            human_move = get_move(different_squares, the_fish)
+            print("HUMAN MOVE: " + human_move)
+            the_fish.make_moves_from_current_position([human_move])
+            print(the_fish.get_board_visual())
+            robot_turn = True
+  
+
+
+    
