@@ -144,7 +144,7 @@ class Stockfish_Core:
     #Takes an array and returns the positional FEN from the array
     def arr_to_positional_fen(self, board: list[list[str]]) -> str:
         fen = ""
-        for row in pieces:
+        for row in board:
             curr_length = 0
             for square in row:
                 if square == self.EMPTY_SQUARE_VALUE:
