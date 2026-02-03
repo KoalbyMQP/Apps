@@ -170,6 +170,14 @@ class Stockfish_Core:
 
         return squares
 
+    #checks if the game is over by seeing if there are no legal moves in the position
+    def is_game_over(self):
+        moves = self.stockfish.get_best_moves()
+        if not moves:
+            return True
+        else:
+            return False
+
     #Finds the en passant square from the FEN
     def get_en_passant_square(self, fen: str):
 
