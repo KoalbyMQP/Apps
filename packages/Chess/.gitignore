@@ -1,0 +1,5 @@
+# Template .gitignore
+# What is .gitignore? .gitignore is a special file that tells Git which files and directories
+# to ignore when tracking changes in your repository. It prevents temporary files, build artifacts,
+# IDE settings, credentials, and other files that shouldn't be committed from being added to Git.
+# This helps keep your repository clean and prevents accidentally committing sensitive information.

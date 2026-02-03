@@ -1,0 +1,316 @@
+<?xml version="1.0"?>
+<!--
+  PACKAGE.XML TEMPLATE - Universal Package Manager
+  
+  This file is the heart of every ROS package and tells both ROS and our custom
+  package manager how to build and deploy your code. This template is designed
+  to work with our universal package manager that can deploy to:
+  - ROS workspaces (development)
+  - Raspberry Pi production systems
+  - Buildroot embedded Linux images
+  - System package repositories
+  
+  HOW TO CUSTOMIZE THIS FILE:
+  1. Replace "my_package_template" with your actual package name (3 places)
+  2. Update the description, maintainer, and license
+  3. Choose your package type in the <pkg_manager type="..."> section
+  4. Add your specific dependencies in the dependency sections
+  5. Configure deployment settings in the <pkg_manager> block
+  
+  WHAT'S STANDARD ROS vs CUSTOM:
+  - Everything outside <export> is standard ROS - see ROS docs
+  - Everything inside <pkg_manager> is our custom package manager config
+  - Standard ROS tools will ignore our custom sections
+  
+  LEARN MORE:
+  - ROS package.xml format: https://docs.ros.org/en/rolling/How-To-Guides/Package-XML-Format3.html
+  - ROS dependencies: https://docs.ros.org/en/rolling/How-To-Guides/Ament-CMake-Documentation.html
+-->
+<package format="3">
+
+  <!-- 
+    =============================================================================
+    BASIC PACKAGE INFORMATION (STANDARD ROS)
+    =============================================================================
+    
+    This section identifies your package. The name MUST match your folder name.
+    Version should follow semantic versioning: MAJOR.MINOR.PATCH
+    
+    Learn more: https://docs.ros.org/en/rolling/How-To-Guides/Package-XML-Format3.html#basic-package-information
+  -->
+  <n>my_package_template</n>
+  <version>0.1.0</version>
+  <description>
+    Replace this with a clear description of what your package does.
+    This appears in package lists and documentation.
+  </description>
+  
+  <!-- At least one maintainer is required -->
+  <maintainer email="your.email@example.com">Your Name</maintainer>
+  <!-- Add additional maintainers if needed -->
+  <!-- <maintainer email="other@example.com">Other Maintainer</maintainer> -->
+  
+  <!-- Choose an appropriate license -->
+  <!-- TODO: Choose a license for our project -->
+  <license>MIT</license>
+  
+  <!-- 
+    =============================================================================
+    BUILD SYSTEM CONFIGURATION (STANDARD ROS)
+    =============================================================================
+    
+    Choose ONE build tool based on your package type. This tells ROS how to build your package.
+    
+    Learn more: https://docs.ros.org/en/rolling/How-To-Guides/Ament-CMake-Documentation.html
+  -->
+  
+  <!-- For C++ packages (most common) -->
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  
+  <!-- For Python-only packages -->
+  <!-- <buildtool_depend>ament_python</buildtool_depend> -->
+  
+  <!-- For mixed C++/Python packages -->
+  <!-- <buildtool_depend>ament_cmake_python</buildtool_depend> -->
+
+  <!-- 
+    =============================================================================
+    DEPENDENCIES (STANDARD ROS)
+    =============================================================================
+    
+    This is where you declare what your package needs to build and run.
+    Dependencies are automatically installed by ROS build tools.
+    
+    TYPES OF DEPENDENCIES:
+    - <depend>: Needed for both build and runtime (most common)
+    - <build_depend>: Only needed during compilation
+    - <exec_depend>: Only needed at runtime
+    - <test_depend>: Only needed for testing
+    
+    Learn more: https://docs.ros.org/en/rolling/How-To-Guides/Package-XML-Format3.html#dependencies
+  -->
+
+  <!-- 
+    ROS CORE DEPENDENCIES
+    These are other ROS packages your package uses
+  -->
+  
+  <!-- C++ ROS client library (if you have C++ code) -->
+  <depend>rclcpp</depend>
+  
+  <!-- Python ROS client library (if you have Python code) -->
+  <depend>rclpy</depend>
+  
+  <!-- Common message types -->
+  <depend>std_msgs</depend>              <!-- String, Int32, Float64, etc. -->
+  <depend>geometry_msgs</depend>         <!-- Point, Pose, Twist, etc. -->
+  <depend>sensor_msgs</depend>           <!-- Image, LaserScan, PointCloud, etc. -->
+  
+  <!-- Add other ROS packages as needed -->
+  <!-- <depend>nav2_msgs</depend>         (Navigation messages) -->
+  <!-- <depend>tf2_ros</depend>           (Transform library) -->
+  <!-- <depend>cv_bridge</depend>         (OpenCV-ROS bridge) -->
+  <!-- <depend>image_transport</depend>   (Efficient image transport) -->
+
+  <!-- 
+    SYSTEM DEPENDENCIES  
+    These are non-ROS packages installed via your system package manager
+  -->
+  
+  <!-- Python system packages -->
+  <!-- <depend>python3-numpy</depend>      NumPy for numerical computing -->
+  <!-- <depend>python3-opencv</depend>     OpenCV for computer vision -->
+  <!-- <depend>python3-serial</depend>     Serial communication -->
+  <!-- <depend>python3-requests</depend>   HTTP requests -->
+  
+  <!-- C++ system libraries -->
+  <!-- <depend>eigen3</depend>            Linear algebra library -->
+  <!-- <depend>boost</depend>             C++ utility libraries -->
+
+  <!-- Build-only dependencies (not needed at runtime) -->
+  <!-- <build_depend>python3-dev</build_depend>      Python headers -->
+  <!-- <build_depend>libopencv-dev</build_depend>    OpenCV development files -->
+
+  <!-- Runtime-only dependencies (not needed for building) -->
+  <!-- <exec_depend>python3-yaml</exec_depend>       YAML file parsing -->
+
+  <!-- 
+    TEST DEPENDENCIES
+    These are only installed when running tests
+    TODO: Add our recommended testing packages here
+  -->
+  <test_depend>gtest</test_depend>                    <!-- C++ unit testing -->
+  <test_depend>pytest</test_depend>                   <!-- Python unit testing -->
+  <test_depend>ament_lint_auto</test_depend>          <!-- Automatic code linting -->
+  <test_depend>ament_lint_common</test_depend>        <!-- Common linting rules -->
+
+  <!-- 
+    =============================================================================
+    PACKAGE MANAGER CONFIGURATION (OUR CUSTOM SETTINGS)
+    =============================================================================
+    
+    Everything in this <export> section is either standard ROS or our custom
+    package manager configuration. The <pkg_manager> sections are CUSTOM and
+    will be ignored by standard ROS tools.
+  -->
+  <export>
+    
+    <!-- 
+      PACKAGE TYPE DECLARATION (CUSTOM)
+      
+      This tells our package manager what type of package this is and how to deploy it.
+      This is NOT part of standard ROS - it's our custom addition.
+      
+      AVAILABLE PACKAGE TYPES:
+      
+      ROS Package Types (deploy to ROS workspaces):
+      - ros_cpp_node          : C++ executable that uses ROS
+      - ros_python_node       : Python executable that uses ROS  
+      - ros_mixed             : Package with both C++ and Python ROS code
+      - ros_cpp_lib           : C++ library for other ROS packages
+      - ros_python_lib        : Python library for other ROS packages
+      - ros_msgs              : Message/service/action definitions only
+      - ros_launch            : Launch files and configurations only
+      
+      System Package Types (deploy to OS, not ROS):
+      - python_lib            : Pure Python library (no ROS dependencies)
+      - pip_package           : Python package for PyPI
+      - cpp_lib               : Pure C++ library (no ROS dependencies)
+      - cargo_bin             : Rust executable
+      - cargo_lib             : Rust library
+      - system_service        : System daemon/service
+      
+      Choose the type that best describes your package:
+    -->
+    <pkg_manager type="ros_cpp_node">
+      
+      <!-- 
+        CONFIGURATION FILES
+        Files that should be preserved during updates and may be edited by users
+      -->
+      <!-- <config_files> -->
+      <!--   <file>config/robot_params.yaml</file>                    Main configuration -->
+      <!--   <file preserve="true">config/user_settings.yaml</file>   Never overwrite -->
+      <!-- </config_files> -->
+      
+      <!-- 
+        SYSTEM INTEGRATION
+        How this package integrates with the operating system
+      -->
+      <!-- <system_integration> -->
+      <!--   <systemd_service>true</systemd_service>           Create systemd service -->
+      <!--   <service_name>my-robot-controller</service_name>  Service name -->
+      <!--   <auto_start>true</auto_start>                    Start on boot -->
+      <!--   <restart_policy>on-failure</restart_policy>      Restart if crashes -->
+      <!-- </system_integration> -->
+      
+      <!-- 
+        ENVIRONMENT VARIABLES
+        Environment variables needed at runtime
+      -->
+      <!-- <environment> -->
+      <!--   <var name="MY_PACKAGE_CONFIG_DIR">/etc/my_package_template</var> -->
+      <!--   <var name="MY_PACKAGE_LOG_LEVEL">INFO</var> -->
+      <!-- </environment> -->
+      
+      <!-- 
+        SECURITY SETTINGS
+        Permissions and security configuration
+      -->
+      <!-- <security> -->
+      <!--   <run_as_user>robot</run_as_user>                  Run as this user -->
+      <!--   <run_as_group>robot</run_as_group>                Run as this group -->
+      <!--   <capabilities>CAP_NET_ADMIN</capabilities>        Linux capabilities -->
+      <!--   <additional_groups>dialout,gpio</additional_groups> Extra groups -->
+      <!-- </security> -->
+      
+      <!-- 
+        NETWORK CONFIGURATION
+        Network ports and firewall rules
+      -->
+      <!-- <networking> -->
+      <!--   <ports> -->
+      <!--     <port protocol="tcp">8080</port>                HTTP server -->
+      <!--     <port protocol="udp">5353</port>               mDNS discovery -->
+      <!--   </ports> -->
+      <!-- </networking> -->
+      
+      <!-- 
+        TARGET-SPECIFIC OVERRIDES (CUSTOM)
+        
+        Different behavior for different deployment targets.
+        This is very powerful - same package.xml, different deployments!
+      -->
+      
+      <!-- Buildroot embedded Linux customizations -->
+      <!-- <buildroot> -->
+      <!--   <dependency_override from="python3-opencv" to="opencv4-lite"/> -->
+      <!--   <exclude_dependencies>python3-matplotlib</exclude_dependencies> -->
+      <!--   <config_override>config/embedded_params.yaml</config_override> -->
+      <!--   <memory_limit>64MB</memory_limit> -->
+      <!-- </buildroot> -->
+      
+      <!-- Debian/Ubuntu (Raspberry Pi) customizations -->
+      <!-- <debian> -->
+      <!--   <additional_dependencies>raspi-gpio,python3-rpi.gpio</additional_dependencies> -->
+      <!--   <config_override>config/pi_params.yaml</config_override> -->
+      <!-- </debian> -->
+      
+      <!-- Development environment customizations -->
+      <!-- <development> -->
+      <!--   <debug_symbols>true</debug_symbols> -->
+      <!--   <additional_dependencies>python3-debugpy,gdb</additional_dependencies> -->
+      <!-- </development> -->
+      
+    </pkg_manager>
+
+    <!-- 
+      STANDARD ROS BUILD TYPE (STANDARD ROS)
+      
+      This tells ROS build tools how to build your package.
+      Must match your buildtool_depend choice above.
+      
+      Learn more: https://docs.ros.org/en/rolling/How-To-Guides/Ament-CMake-Documentation.html
+    -->
+    <build_type>ament_cmake</build_type>
+    <!-- Other options: ament_python, ament_cmake_python -->
+    
+    <!-- 
+      ROS PLUGIN DECLARATIONS (STANDARD ROS)
+      
+      If your package provides plugins for other ROS packages, declare them here.
+      
+      Learn more: https://docs.ros.org/en/rolling/How-To-Guides/Plugin-Architecture.html
+    -->
+    <!-- <my_plugin_interface plugin="${prefix}/plugins.xml"/> -->
+  </export>
+
+  <!-- 
+    =============================================================================
+    ADVANCED FEATURES (STANDARD ROS)
+    =============================================================================
+    
+    These are optional advanced ROS features you might need
+  -->
+  
+  <!-- 
+    CONDITIONAL DEPENDENCIES
+    Dependencies that only apply in certain conditions
+  -->
+  <!-- <depend condition="$ROS_DISTRO == humble">some_humble_package</depend> -->
+  <!-- <depend condition="$ROS_VERSION == 2">rclcpp</depend> -->
+  
+  <!-- 
+    GROUP DEPENDENCIES
+    Metapackages that bundle multiple related packages
+  -->
+  <!-- <group_depend>navigation2</group_depend>       Complete nav stack -->
+  <!-- <group_depend>perception</group_depend>       Vision packages -->
+
+  <!--
+    PACKAGE GROUPS
+    Declare this package as part of a larger metapackage
+  -->
+  <!-- <member_of_group>my_robot_packages</member_of_group> -->
+
+</package>
