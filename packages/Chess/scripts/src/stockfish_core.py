@@ -97,7 +97,7 @@ class Stockfish_Core:
         elif len(changed_squares) == 3:
             # for three changed squares, only en passant is possible
             print("en passant detected")
-            en_passant_square = get_en_passant_square(self.stockfish.get_fen_position())
+            en_passant_square = self.get_en_passant_square(self.stockfish.get_fen_position())
             if coordinates[0] == en_passant_square:
                 if self.stockfish.get_what_is_on_square(coordinates[1]) is None:
                     return coordinates[1] + coordinates[2]
@@ -172,7 +172,7 @@ class Stockfish_Core:
 
     #checks if the game is over by seeing if there are no legal moves in the position
     def is_game_over(self):
-        moves = self.stockfish.get_best_moves()
+        moves = self.stockfish.get_best_move()
         if not moves:
             return True
         else:

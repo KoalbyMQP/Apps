@@ -51,7 +51,7 @@ class ChessVision:
             raise RuntimeError("Call calibrate() before get_board_state()")
         device = dai.Device()
         model = Model(self.model_path, device)
-        chess_pieces = model.predict(distortion=distortion)
+        chess_pieces = model.predict2(self.model_path, distortion=True)
         device.close()
         time.sleep(0.5)
         return self._localizer.localize(chess_pieces, self._squares)
@@ -72,6 +72,11 @@ def main() -> None:
     print(f"  Model: {Model}")
     print(f"  Localize: {Localize}")
     print("OK — imports work.")
+
+    vision  = ChessVision("/home/chess/Desktop/Apps/packages/Chess/scripts/src/yolov11m_snake_final.pt")
+    vision.calibrate()
+    board_state = vision.get_board_state()
+    print(board_state)
 
 
 if __name__ == "__main__":
