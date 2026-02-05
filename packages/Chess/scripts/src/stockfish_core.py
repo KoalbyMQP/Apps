@@ -38,10 +38,13 @@ class Stockfish_Core:
         different_squares = self.compare_arrays(previous_squares, current_squares)
 
         last_move = self.get_move(different_squares)
-
-        self.make_move(last_move)
-
-        robot_move = self.make_move()
+        try:
+            self.make_move(last_move)
+            robot_move = self.make_move()
+        except ValueError:
+            print("Stockfishy no likey the movey")
+            self.stockfish.set_fen_position(previous_fen)
+            raise ValueError
 
         return robot_move
 
@@ -63,11 +66,11 @@ class Stockfish_Core:
         for rank in ranks:
             col = 0
             for ch in rank:
-                print(ch)
+                #print(ch)
                 if ch.isdigit():
                     col += int(ch)
                 else:
-                    print(rank_num, col)
+                    #print(rank_num, col)
                     board[rank_num][col] = ch
                     col += 1
             rank_num += 1
@@ -97,7 +100,7 @@ class Stockfish_Core:
         elif len(changed_squares) == 3:
             # for three changed squares, only en passant is possible
             print("en passant detected")
-            en_passant_square = get_en_passant_square(self.stockfish.get_fen_position())
+            en_passant_square = self.get_en_passant_square(self.stockfish.get_fen_position())
             if coordinates[0] == en_passant_square:
                 if self.stockfish.get_what_is_on_square(coordinates[1]) is None:
                     return coordinates[1] + coordinates[2]
