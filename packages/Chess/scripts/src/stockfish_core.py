@@ -175,7 +175,7 @@ class Stockfish_Core:
 
     #checks if the game is over by seeing if there are no legal moves in the position
     def is_game_over(self):
-        moves = self.stockfish.get_best_moves()
+        moves = self.stockfish.get_best_move()
         if not moves:
             return True
         else:
