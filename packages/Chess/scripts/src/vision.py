@@ -54,7 +54,50 @@ class ChessVision:
         chess_pieces = model.predict2(self.model_path, distortion=True)
         device.close()
         time.sleep(0.5)
-        return self._localizer.localize(chess_pieces, self._squares)
+
+        full_board = self._localizer.localize(chess_pieces, self._squares)
+
+        self.print_full_board(full_board)
+        print(full_board)
+
+        return full_board
+
+    def print_full_board(self, full_board):
+        """Print the full chess board with pieces in a visual 8x8 grid."""
+        print("\n" + "="*80)
+        print("CHESS BOARD STATE")
+        print("="*80)
+        
+        # Sort squares by row (8 to 1) and column (A to H)
+        sorted_board = sorted(full_board.items(), 
+                            key=lambda x: (-int(x[0][1]), x[0][0]))
+        
+        # Print header
+        print("\n      ", end="")
+        for col in 'ABCDEFGH':
+            print(f"    {col}     ", end="")
+        print("\n   " + "-" * 76)
+        
+        # Print rows 8 to 1
+        current_row = None
+        for square_name, piece_name in sorted_board:
+            row = square_name[1]
+            if current_row != row:
+                if current_row is not None:
+                    print()
+                print(f" {row} |", end="")
+                current_row = row
+            
+            # Display piece or empty square
+            if piece_name:
+                # Truncate long names to fit
+                display = piece_name[:8] if len(piece_name) <= 8 else piece_name[:5] + "..."
+                print(f" {display:8s} |", end="")
+            else:
+                print(f" {'·':8s} |", end="")
+        
+        print("\n   " + "-" * 76)
+        print("="*80 + "\n")
 
     @property
     def squares(self) -> dict | None:

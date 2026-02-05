@@ -31,14 +31,28 @@ def run(
             if sm.get("last_board") is None:
                 move = stockfish.make_move()
             else:
-                move = stockfish.get_move_from_camera(board_dict)
-            
+                
+                x = 0
+                while(x < 3):
+                    try:
+                        board_dict = vision.get_board_state()
+                        move = stockfish.get_move_from_camera(board_dict)
+                        x = 3
+                    except ValueError:
+                        print("Camera Failed, try again") 
+                    x += 1
+
+
             print(f"Robot move: {move} — move the piece, then press Enter.")
             input()
 
             if stockfish.is_game_over():
                 set_state(sm, State.GAME_OVER)
                 return
+
+            print(stockfish.get_board_visual())
+
+            sm["last_board"] = board_dict
 
             set_state(sm, State.OPPONENT_TURN)
             pass

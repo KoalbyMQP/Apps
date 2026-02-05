@@ -82,6 +82,8 @@ class Stockfish_Core:
 
     #Gets the move from stockfish
     def get_move(self, changed_squares: list[tuple[int, int]]) -> str:
+        print("ChangedSquares:", changed_squares)
+        
         coordinates = []
         white_pieces = [Stockfish.Piece.WHITE_PAWN, Stockfish.Piece.WHITE_KNIGHT, Stockfish.Piece.WHITE_BISHOP,
                         Stockfish.Piece.WHITE_ROOK, Stockfish.Piece.WHITE_QUEEN, Stockfish.Piece.WHITE_KING]
@@ -136,6 +138,9 @@ class Stockfish_Core:
             move = self.stockfish.get_best_move()
 
         if move:
+
+            print(move)
+            print(self.stockfish.get_fen_position())
             self.stockfish.make_moves_from_current_position([move])
             self.current_FEN = self.stockfish.get_fen_position()
 
