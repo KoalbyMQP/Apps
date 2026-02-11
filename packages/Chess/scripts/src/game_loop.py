@@ -1,8 +1,11 @@
-"""Simple game loop: state machine + vision -> stockfish. No IK; wait for Enter to advance."""
+"""Simple game loop: state machine + vision -> stockfish. No IK; wait for button to advance."""
 
 from state_machine import State, create, get, set_state
 from vision import ChessVision
 from stockfish_core import Stockfish_Core
+from gpiozero import Button
+
+button = Button(2)
 
 
 def run(
@@ -12,17 +15,18 @@ def run(
 ) -> None:
     """
     Run one iteration of the loop based on current state.
-    Robot moves are printed; press Enter after manually moving the piece, then we advance.
+    Robot moves are printed; press the button after manually moving the piece, then we advance.
     """
     
     while True:
         state = get(sm)
 
         if state == State.CALIBRATING:
-            print("Optimizing quantum algorithms...")
+            print("Calibrating...")
             vision.calibrate()
-            print("Hit enter once pieces are set up on the board")
-            input()
+            print("Calibration complete")
+            print("Press the button once pieces are set up on the board")
+            button.wait_for_press()
             set_state(sm, State.MY_TURN)
             pass
 
@@ -43,8 +47,8 @@ def run(
                     x += 1
 
 
-            print(f"Robot move: {move} — move the piece, then press Enter.")
-            input()
+            print(f"Robot move: {move} — move the piece, then press the button.")
+            button.wait_for_press()
 
             if stockfish.is_game_over():
                 set_state(sm, State.GAME_OVER)
@@ -58,8 +62,8 @@ def run(
             pass
 
         if state == State.OPPONENT_TURN:
-            print("Your turn. Press Enter when done.")
-            input()
+            print("Your turn. Press the button when done.")
+            button.wait_for_press()
 
             if stockfish.is_game_over():
                 set_state(sm, State.GAME_OVER)
