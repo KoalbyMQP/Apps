@@ -4,10 +4,10 @@ from enum import Enum
 
 
 class State(Enum):
-    CALIBRATING = "calibrating"
-    MY_TURN = "my_turn"
-    OPPONENT_TURN = "opponent_turn"
-    GAME_OVER = "game_over"
+    CALIBRATING = "Calibrating"
+    MY_TURN = "My turn"
+    OPPONENT_TURN = "Opponent turn"
+    GAME_OVER = "Game over"
 
 
 def create():

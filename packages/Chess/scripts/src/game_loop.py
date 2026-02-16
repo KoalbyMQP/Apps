@@ -31,26 +31,29 @@ def run(
             pass
 
         if state == State.MY_TURN:
-            board_dict = vision.get_board_state()
+            board_dict:dict[str, str] = {}
             if sm.get("last_board") is None:
                 move = stockfish.make_move()
             else:
                 
-                x = 0
-                while(x < 3):
+                num_attempts = 1
+                while(num_attempts <= 3):
                     try:
                         board_dict = vision.get_board_state()
                         move = stockfish.get_move_from_camera(board_dict)
-                        x = 3
+                        break
                     except ValueError:
-                        print("Camera Failed, try again") 
-                    x += 1
+                        print(f"Camera failed on attempt #{num_attempts}")
+                        print("Camera Failed, try again")
+                        num_attempts += 1
 
 
             print(f"Robot move: {move} — move the piece, then press the button.")
             button.wait_for_press()
 
             if stockfish.is_game_over():
+                print("Game over you lose (probably)")
+                print("Program terminating...")
                 set_state(sm, State.GAME_OVER)
                 return
 
@@ -59,12 +62,12 @@ def run(
             sm["last_board"] = board_dict
 
             set_state(sm, State.OPPONENT_TURN)
-            pass
 
         if state == State.OPPONENT_TURN:
             print("Your turn. Press the button when done.")
             button.wait_for_press()
 
+            #I think this logic is uselss, but I'm leaving it in for now just in case
             if stockfish.is_game_over():
                 set_state(sm, State.GAME_OVER)
                 return
@@ -74,6 +77,7 @@ def run(
 
         if state == State.GAME_OVER:
             print("Game over you lose (probably)")
+            print("Program terminating...")
             return
 
 

@@ -7,7 +7,7 @@ Localize (localization) and Model (cv_model) from that module.
 Requires the Chess vision package to be installed from the Sensing repo. Use the same
 Python you run this script with (e.g. python3 -m pip ... then python3 vision.py):
 
-  python3 -m pip install "git+https://github.com/KoalbyMQP/Sensing.git@raspberry-pi/vision#subdirectory=Vision/modules/Chess"
+  python3 -m pip install "git+https://github.com/KoalbyMQP/Sensing.git@raspberry-pi/vision#subdirectory=Vision/modules/Chess " --break-system-packages
 """
 
 import time
@@ -22,6 +22,8 @@ class ChessVision:
     """
     Thin wrapper around Sensing/Chess: calibration and board state from camera.
     """
+
+    DELAY:float = 0.5
 
     def __init__(self, model_path: str):
         self.model_path = model_path
@@ -38,7 +40,7 @@ class ChessVision:
         self._localizer = Localize(device)
         self._squares = self._localizer.calibrate(distortion=distortion)
         device.close()
-        time.sleep(0.5)
+        time.sleep(ChessVision.DELAY)
         return self._squares
 
     def get_board_state(self, distortion: bool = True) -> dict:
@@ -53,7 +55,7 @@ class ChessVision:
         model = Model(self.model_path, device)
         chess_pieces = model.predict2(self.model_path, distortion=True)
         device.close()
-        time.sleep(0.5)
+        time.sleep(ChessVision.DELAY)
 
         full_board = self._localizer.localize(chess_pieces, self._squares)
 
@@ -91,7 +93,8 @@ class ChessVision:
             # Display piece or empty square
             if piece_name:
                 # Truncate long names to fit
-                display = piece_name[:8] if len(piece_name) <= 8 else piece_name[:5] + "..."
+                display = piece_name[0]+piece_name[5:]
+                #display = piece_name[:8] if len(piece_name) <= 8 else piece_name[:5] + "..."
                 print(f" {display:8s} |", end="")
             else:
                 print(f" {'·':8s} |", end="")
@@ -116,7 +119,8 @@ def main() -> None:
     print(f"  Localize: {Localize}")
     print("OK — imports work.")
 
-    vision  = ChessVision("/home/chess/Desktop/Apps/packages/Chess/scripts/src/yolov11m_snake_final.pt")
+    MODEL_PATH:str = "/home/chess/Desktop/Apps/packages/Chess/scripts/src/yolov11m_snake_final.pt"
+    vision = ChessVision(MODEL_PATH)
     vision.calibrate()
     board_state = vision.get_board_state()
     print(board_state)

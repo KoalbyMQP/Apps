@@ -118,7 +118,7 @@ class Stockfish_Core:
                     return coordinates[0] + coordinates[1]
                 else:
                     return coordinates[1] + coordinates[0]
-        else:
+        elif len(changed_squares) == 2:
             if self.stockfish.get_what_is_on_square(square=coordinates[0]) is None:
                 return coordinates[1] + coordinates[0]
             elif self.stockfish.get_what_is_on_square(square=coordinates[1]) is None:
@@ -129,24 +129,27 @@ class Stockfish_Core:
                     return coordinates[1] + coordinates[0]
                 else:
                     return coordinates[0] + coordinates[1]
-
+        else:
+            print("Illegal move detected")
+            raise ValueError
     #Make the move from the current position
     def make_move(self, move: str=None):
         self.stockfish.set_fen_position(self.current_FEN)
 
+        #If no move is provided, stockfish finds the best move and makes it
         if move is None:
             move = self.stockfish.get_best_move()
 
         if move:
 
-            print(move)
+            print(f"Stockfish plays: {move}")
             print(self.stockfish.get_fen_position())
             self.stockfish.make_moves_from_current_position([move])
             self.current_FEN = self.stockfish.get_fen_position()
 
             return move
         else:
-            print("NO VALID MOVES")
+            print("NO VALID MOVES - GAME IS OVER")
             return 0
 
     #Takes an array and returns the positional FEN from the array
