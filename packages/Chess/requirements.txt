@@ -1,0 +1,6 @@
+# Chess package Python dependencies.
+# Sensing Chess (vision) is installed in build.sh via pip git+ URL.
+gpiozero
+depthai
+stockfish
+pyserial
