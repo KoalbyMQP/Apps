@@ -27,7 +27,9 @@ def close_serial():
 def write_position(pos: int):
     """Send position P1-P10 to ESP32."""
     if ser and ser.is_open:
-        ser.write(f"P{pos}\n".encode())
+        msg = f"P{pos}\n".encode()
+        ser.write(msg)
+        print("TX:", repr(msg))
 
 
 def send_move(move: str):
@@ -46,8 +48,18 @@ def send_opponent_position():
     write_position(10)
 
 
+def log_available_input():
+    """Read and print any data received (non-blocking). Call after writes to see ESP32 replies."""
+    if ser and ser.is_open and ser.in_waiting:
+        data = ser.read(ser.in_waiting)
+        print("RX:", repr(data))
+
+
 if __name__ == "__main__":
     open_serial()
-    write_position(3)  # test: e3
+    print("Serial opened")
+    write_position(10)  # test: e3
     time.sleep(0.5)
+    log_available_input()
+    time.sleep(2)
     close_serial()

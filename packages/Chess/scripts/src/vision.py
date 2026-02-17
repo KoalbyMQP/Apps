@@ -7,7 +7,7 @@ Localize (localization) and Model (cv_model) from that module.
 Requires the Chess vision package to be installed from the Sensing repo. Use the same
 Python you run this script with (e.g. python3 -m pip ... then python3 vision.py):
 
-  python3 -m pip install "git+https://github.com/KoalbyMQP/Sensing.git@raspberry-pi/vision#subdirectory=Vision/modules/Chess " --break-system-packages
+  python3 -m pip install "git+https://github.com/KoalbyMQP/Sensing.git@raspberry-pi/vision#subdirectory=Vision/modules/Chess" --break-system-packages
 """
 
 import time

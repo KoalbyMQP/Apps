@@ -4,6 +4,7 @@ from state_machine import State, create, get, set_state
 from vision import ChessVision
 from stockfish_core import Stockfish_Core
 from gpiozero import Button
+import lead_screw
 
 button = Button(2)
 
@@ -49,6 +50,7 @@ def run(
 
 
             print(f"Robot move: {move} — move the piece, then press the button.")
+            lead_screw.send_move(move)
             button.wait_for_press()
 
             if stockfish.is_game_over():
@@ -61,19 +63,19 @@ def run(
 
             sm["last_board"] = board_dict
 
+            lead_screw.send_clock_position()
+            lead_screw.send_opponent_position()
             set_state(sm, State.OPPONENT_TURN)
 
         if state == State.OPPONENT_TURN:
             print("Your turn. Press the button when done.")
             button.wait_for_press()
 
-            #I think this logic is uselss, but I'm leaving it in for now just in case
             if stockfish.is_game_over():
                 set_state(sm, State.GAME_OVER)
                 return
 
             set_state(sm, State.MY_TURN)
-            pass
 
         if state == State.GAME_OVER:
             print("Game over you lose (probably)")
@@ -82,7 +84,11 @@ def run(
 
 
 if __name__ == "__main__":
-    vision = ChessVision("/home/chess/Desktop/Apps/packages/Chess/scripts/src/yolov11m_snake_final.pt")
-    stockfish = Stockfish_Core(stockfish_path="/home/chess/Stockfish/src/stockfish")
-    sm = create()
-    run(vision, stockfish, sm)
+    # lead_screw.open_serial()
+    # try:
+        vision = ChessVision("/home/chess/Desktop/Apps/packages/Chess/scripts/src/yolov11m_snake_final.pt")
+        stockfish = Stockfish_Core(stockfish_path="/home/chess/Stockfish/src/stockfish")
+        sm = create()
+        run(vision, stockfish, sm)
+    # finally:
+        # lead_screw.close_serial()

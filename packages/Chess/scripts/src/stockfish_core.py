@@ -33,6 +33,8 @@ class Stockfish_Core:
 
         previous_squares = self.fen_to_arr(previous_fen)
 
+        print("FEN: ", fen_move)
+
         current_squares = self.fen_to_arr(fen_move)
 
         different_squares = self.compare_arrays(previous_squares, current_squares)
@@ -152,19 +154,34 @@ class Stockfish_Core:
             print("NO VALID MOVES - GAME IS OVER")
             return 0
 
-    #Takes an array and returns the positional FEN from the array
+    #Takes an array and returns the positional FEN from the array.
+    # Board cells are empty (0 or "") or "color-piece_name"; they are converted to FEN chars here.
     def arr_to_positional_fen(self, board: list[list[str]]) -> str:
+        piece_to_fen = {
+            "white-pawn": "P",
+            "white-knight": "N",
+            "white-bishop": "B",
+            "white-rook": "R",
+            "white-queen": "Q",
+            "white-king": "K",
+            "black-pawn": "p",
+            "black-knight": "n",
+            "black-bishop": "b",
+            "black-rook": "r",
+            "black-queen": "q",
+            "black-king": "k",
+        }
         fen = ""
         for row in board:
             curr_length = 0
             for square in row:
-                if square == self.EMPTY_SQUARE_VALUE:
+                if square == self.EMPTY_SQUARE_VALUE or square == "":
                     curr_length += 1
                 else:
                     if curr_length > 0:
                         fen += str(curr_length)
                         curr_length = 0
-                    fen += square
+                    fen += piece_to_fen.get(square, square)
             if curr_length > 0:
                 fen += str(curr_length)
             fen += "/"
@@ -222,12 +239,24 @@ class Stockfish_Core:
         }
 
         ranks = []
+
+        pieces = [[0 for _ in range(8)] for _ in range(8)]
+
         current_rank = ""
         empty_count = 0
         rank_number = self.NUM_SQUARES
 
         # Process squares rank by rank (A8 → H8, ..., A1 → H1)
         for i, (square, piece) in enumerate(board_dict.items()):
+
+            file = square[0]
+            row = square[1]
+            print(("FILE: ", file, "ROW: ", row))
+
+            row_num = 8 - int(row)
+            col_num = ord(file) - ord('A')
+            print(("ROW: ", row_num, "COL: ", col_num))
+            pieces[row_num][col_num] = piece
 
             if piece == "":  # empty square
                 empty_count += 1
@@ -258,8 +287,9 @@ class Stockfish_Core:
                 rank_number -= 1
 
         # Join ranks with '/'
-        fen = "/".join(ranks)
-        return fen + " w KQkq - 0 1"
+        pos = self.arr_to_positional_fen(pieces)
+        
+        return pos + " w KQkq - 0 1"
 
 
 #MAIN
