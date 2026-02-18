@@ -4,10 +4,13 @@ Chess vision wrapper: imports from Sensing repo and exposes calibrate + get_boar
 Replicates the flow in Sensing/Vision/modules/Chess/src/main.py using
 Localize (localization) and Model (cv_model) from that module.
 
-Requires the Chess vision package to be installed from the Sensing repo. Use the same
-Python you run this script with (e.g. python3 -m pip ... then python3 vision.py):
+Requires the Chess vision package from the Sensing repo (raspberry-pi/vision branch).
+Use the same Python you run this script with (e.g. python3 -m pip ... then python3 vision.py).
 
-  python3 -m pip install "git+https://github.com/KoalbyMQP/Sensing.git@raspberry-pi/vision#subdirectory=Vision/modules/Chess" --break-system-packages
+To avoid stale/cached installs, always use --upgrade --no-cache-dir so pip pulls
+the latest code from the branch:
+
+  python3 -m pip install --upgrade --no-cache-dir "git+https://github.com/KoalbyMQP/Sensing.git@raspberry-pi/vision#subdirectory=Vision/modules/Chess" --break-system-packages
 """
 
 import time
