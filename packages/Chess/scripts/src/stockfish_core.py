@@ -134,7 +134,7 @@ class Stockfish_Core:
         else:
             print("Illegal move detected")
             raise ValueError
-    #Make the move from the current position
+    #Make the move from the current position - Currently returns the move_queue
     def make_move(self, move: str=None):
         self.stockfish.set_fen_position(self.current_FEN)
 
@@ -144,15 +144,23 @@ class Stockfish_Core:
 
         if move:
 
+            move_queue = self.move_to_move_queue(move)
             print(f"Stockfish plays: {move}")
             print(self.stockfish.get_fen_position())
             self.stockfish.make_moves_from_current_position([move])
             self.current_FEN = self.stockfish.get_fen_position()
 
-            return move
+            return move_queue
         else:
             print("NO VALID MOVES - GAME IS OVER")
             return 0
+
+    #Overwrite the camera by manually inputting the FEN position
+    def overwrite_camera(self, fen):
+        self.stockfish.set_fen_position(fen)
+        print("Position overwritten")
+        print(self.get_board_visual())
+        return
 
     #Takes an array and returns the positional FEN from the array.
     # Board cells are empty (0 or "") or "color-piece_name"; they are converted to FEN chars here.
@@ -291,6 +299,102 @@ class Stockfish_Core:
         
         return pos + " w KQkq - 0 1"
 
+    def move_to_move_queue(self, move):
+        move_queue = []
+        origin_square = move[0:2]
+        destination_square = move[2:4]
+        #Check to see if the move was castling - white
+        if origin_square == "e1":
+            if self.stockfish.get_what_is_on_square(origin_square) == self.stockfish.Piece.WHITE_KING:
+                if destination_square == "g1":
+                    move_queue.append("e1g1")
+                    move_queue.append("h1f1")
+                    return move_queue
+                elif destination_square == "c1":
+                    move_queue.append("e1c1")
+                    move_queue.append("a1d1")
+                    return move_queue
+
+        if origin_square == "e8":
+            if self.stockfish.get_what_is_on_square(origin_square) == self.stockfish.Piece.BLACK_KING:
+                if destination_square == "g8":
+                    move_queue.append("e8g8")
+                    move_queue.append("h8f8")
+                    return move_queue
+                elif destination_square == "c8":
+                    move_queue.append("e8c8")
+                    move_queue.append("a8d8")
+                    return move_queue
+
+        #Check to see if move was a capture
+        if self.stockfish.will_move_be_a_capture(move) == self.stockfish.Capture.DIRECT_CAPTURE:
+            if ord('a') <= origin_square[0] <= ord('c'):
+                #find a
+                for i in range(1, 9):
+                    if self.stockfish.get_what_is_on_square(str("e" + str(i))) == None:
+                        empty_square = str("d" + i)
+                        target = origin_square + empty_square
+                        move_queue.append(target)
+                        empty_square += "X9"
+                        move_queue.append(empty_square)
+                        break
+            else:
+                move_queue.append(str(destination_square + "X9"))
+
+        if self.stockfish.will_move_be_a_capture(move) == self.stockfish.Capture.EN_PASSANT:
+            move_queue.append(move)
+            FEN = self.stockfish.get_fen_position()
+            ep_square = self.get_en_passant_square(FEN)
+            ep_square += "XX"
+            move_queue.append(ep_square)
+            return move_queue
+
+
+
+        #Check to see if move was cross (left to right)
+        if 'a' <= origin_square[0] <= 'c' and 'f' <= destination_square <= 'h':
+            origin_rank = ord(origin_square[1])
+            destination_rank = ord(destination_square[1])
+            if origin_rank == destination_rank:
+                move_queue.append(str(origin_square + "e" + origin_square[1]))
+                move_queue.append(str("e" + origin_square[1] + destination_square))
+                return move_queue
+            else:
+                origin_file = ord(origin_square[0])
+                distance = ord('e') - origin_file
+                if origin_rank > destination_rank:
+                    target_rank = (origin_rank - ord('0')) - distance
+                    move_queue.append(str(origin_square + "e" + target_rank))
+                    move_queue.append(str("e" + target_rank + destination_square))
+                else:
+                    target_rank = (origin_rank - ord('0')) + distance
+                    move_queue.append(str(origin_square + "e" + target_rank))
+                    move_queue.append(str("e" + target_rank + destination_square))
+
+        
+        #Check to see if move was cross (right to left)
+        if 'a' <= destination_square[0] <= 'c' and 'f' <= origin_square <= 'h':
+            origin_rank = ord(origin_square[1])
+            destination_rank = ord(destination_square[1])
+            if origin_rank == destination_rank:
+                move_queue.append(str(origin_square + "d" + origin_square[1]))
+                move_queue.append(str("d" + origin_square[1] + destination_square))
+                return move_queue
+            else:
+                origin_file = ord(origin_square[0])
+                distance = ord('d') - origin_file
+                if origin_rank > destination_rank:
+                    target_rank = (origin_rank - ord('0')) - distance
+                    move_queue.append(str(origin_square + "d" + target_rank))
+                    move_queue.append(str("d" + target_rank + destination_square))
+                else:
+                    target_rank = (origin_rank - ord('0')) + distance
+                    move_queue.append(str(origin_square + "d" + target_rank))
+                    move_queue.append(str("d" + target_rank + destination_square))
+        
+        if not move_queue: #If the list is empty, one movement works
+            move_queue.append(move)
+        return move_queue
 
 #MAIN
 if __name__ == "__main__":
