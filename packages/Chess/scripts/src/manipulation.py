@@ -8,7 +8,7 @@ Then uncomment the imports below and implement the methods.
 """
 
 import time
-
+import lead_screw
 import serial
 
 # Placeholder: uncomment when IK package is available.
@@ -19,11 +19,11 @@ import serial
 class Manipulation:
     """Thin wrapper around IK repo: move arm to position, etc."""
 
-    CAPTURE_ZONE = "XX"
+    CAPTURE_ZONE = "X9"
     LEFT_LIMIT = 'c'
     RIGHT_LIMIT = 'f'
-    LEFT_ARM = "LEFT"
-    RIGHT_ARM = "RIGHT"
+    LEFT_ARM = "L"
+    RIGHT_ARM = "R"
     UART_PORT = "/dev/ttyACM0"
     UART_BAUD = 115200
     UART_LINE_TIMEOUT = 1.0
@@ -47,7 +47,7 @@ class Manipulation:
         """Send the home command to the Arduino and wait for completion."""
         self.now("Starting Position")
     
-    def now(self, command: str) -> None:
+    def send_move(self, command: str) -> None:
         """
         UART to Arduino Mega: send ``command``, then block until a line
         ``Complete`` is received (other lines are ignored).
@@ -75,7 +75,7 @@ class Manipulation:
         raise NotImplementedError
     
     #Gets the side the piece was picked up on
-    def get_side(self, move) -> str:
+    def get_side(self, move: str) -> str:
         file = move[0]
         if file <= ord(Manipulation.LEFT_LIMIT):
             return self.LEFT_ARM
@@ -89,26 +89,35 @@ class Manipulation:
                 return self.RIGHT_ARM
     
     def make_move_list(self, move_queue) -> None:
+        new_moves = []
 
         for move in move_queue: #Loop through the move queue 
-            pick_up_square = move[0:2]
-            side = self.get_side(move)
-            self.move_to_square(pick_up_square)
-            self.pick_up(side)
-            destination_square = move[2:4]
-            if destination_square == Manipulation.CAPTURE_ZONE:
-                self.move_captured_piece()
-            else:
-                self.move_to_square(destination_square, side)
-        
-        self.press_clock()
+            side = self.get_side(move=move)
+            move += side
+            new_moves.append(move)
 
-    def press_clock(self) -> None:
-        raise NotImplementedError
+        new_moves.append("CLOCK")
+        return new_moves
 
+    def move_list_arduino(self, move_list) -> int:
+        for move in move_list:
+            lead_screw_1 = move[1]
+            lead_screw_2 = move[3]
+            column_1 = move[0]
+            column_2 = move[2]
+            side_bit = move[4]
+        if move == "CLOCK":
+            lead_screw.send_clock_position()
 
-
-
+            lead_screw.send_opponent_position()
+        else:
+            lead_screw.send_move(lead_screw_1)
+            move_1 = str(column_1 + side_bit)
+            self.send_move(move_1)
+            lead_screw.send_move(lead_screw_2)
+            move_2 = str(column_2 + side_bit)
+            self.send_move(move_2)
+        return 1
 
 def main() -> None:
     Manipulation().home()
