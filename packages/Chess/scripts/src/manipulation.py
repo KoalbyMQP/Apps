@@ -7,6 +7,10 @@ Once the IK repo is available, install it (e.g.):
 Then uncomment the imports below and implement the methods.
 """
 
+import time
+
+import serial
+
 # Placeholder: uncomment when IK package is available.
 # from ik_package.solver import Solver
 # from ik_package.robot import Robot
@@ -20,6 +24,9 @@ class Manipulation:
     RIGHT_LIMIT = 'f'
     LEFT_ARM = "LEFT"
     RIGHT_ARM = "RIGHT"
+    UART_PORT = "/dev/ttyACM0"
+    UART_BAUD = 115200
+    UART_LINE_TIMEOUT = 1.0
 
     def __init__(self) -> None:
         pass
@@ -34,9 +41,32 @@ class Manipulation:
         raise NotImplementedError
 
 
-    def home(self) -> None:
-        """Placeholder: move arm to home position."""
-        raise NotImplementedError("IK repo not installed; add repo and implement.")
+    def home(
+        self
+    ) -> None:
+        """Send the home command to the Arduino and wait for completion."""
+        self.now("Starting Position")
+    
+    def now(self, command: str) -> None:
+        """
+        UART to Arduino Mega: send ``command``, then block until a line
+        ``Complete`` is received (other lines are ignored).
+        """
+        with serial.Serial(
+            self.UART_PORT,
+            self.UART_BAUD,
+            timeout=self.UART_LINE_TIMEOUT,
+        ) as ser:
+            time.sleep(2)
+            ser.reset_input_buffer()
+            ser.write(f"{command}\n".encode())
+            ser.flush()
+            while True:
+                raw = ser.readline()
+                if not raw:
+                    continue
+                if raw.decode(errors="replace").strip() == "Complete":
+                    break
     
     def pick_up(self, side: str) -> None:
         raise NotImplementedError
@@ -81,9 +111,8 @@ class Manipulation:
 
 
 def main() -> None:
-    print("Manipulation: placeholder (IK repo not wired up yet).")
-    m = Manipulation()
-    print("  Manipulation() OK; move_to_square / home will raise until implemented.")
+    Manipulation().home()
+    print("home: received Complete")
 
 
 if __name__ == "__main__":
