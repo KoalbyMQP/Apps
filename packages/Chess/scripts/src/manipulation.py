@@ -111,13 +111,24 @@ class Manipulation:
 
             lead_screw.send_opponent_position()
         else:
-            lead_screw.send_move(lead_screw_1)
+            side = self.get_side(move)
+
+            lead_screw.send_move(lead_screw_1, self.is_cross_body(move=move, side=side))
             move_1 = str(column_1 + side_bit)
             self.send_move(move_1)
-            lead_screw.send_move(lead_screw_2)
+            lead_screw.send_move(lead_screw_2, self.is_cross_body(move=move, side=side))
             move_2 = str(column_2 + side_bit)
             self.send_move(move_2)
         return 1
+    
+    def is_cross_body(self, move, side):
+        origin_file = move[0]
+        destination_file = move[1]
+        if side == self.LEFT_ARM and (origin_file == 'e' or destination_file == 'e'):
+            return True
+        elif side == self.RIGHT_ARM and (origin_file == 'd' or destination_file == 'd'):
+            return True
+        return False
 
 def main() -> None:
     Manipulation().home()
