@@ -1,0 +1,1594 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="master_magnet_hand_v5">
+  <link
+    name="chest">
+    <inertial>
+      <origin
+        xyz="-1.3277015565718E-06 -0.0263455785566969 0.000264952577203008"
+        rpy="0 0 0" />
+      <mass
+        value="1.00632727288881" />
+      <inertia
+        ixx="0.00071164733207609"
+        ixy="9.26200705904117E-09"
+        ixz="-1.35110884069148E-07"
+        iyy="0.00104142086511742"
+        iyz="6.46237133032502E-06"
+        izz="0.000787833187388017" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/chest.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/chest.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="neck">
+    <inertial>
+      <origin
+        xyz="0.000463690787653748 0.00902012394205855 3.1038774717107E-08"
+        rpy="0 0 0" />
+      <mass
+        value="0.00594063211107276" />
+      <inertia
+        ixx="7.14031423861982E-07"
+        ixy="-1.00193578163679E-08"
+        ixz="3.26838990201372E-12"
+        iyy="1.81302717415531E-06"
+        iyz="-3.6521228976742E-13"
+        izz="2.04030832261222E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/neck.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.501960784313725 0.501960784313725 0.501960784313725 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/neck.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="neckturn"
+    type="continuous">
+    <origin
+      xyz="0 -0.0453281774166154 0.0833000000000035"
+      rpy="1.57079632679497 0 -3.14159265358979" />
+    <parent
+      link="chest" />
+    <child
+      link="neck" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="head">
+    <inertial>
+      <origin
+        xyz="0.000575282707726073 0.0464752738351477 -0.0059974784952835"
+        rpy="0 0 0" />
+      <mass
+        value="0.541447558934612" />
+      <inertia
+        ixx="0.00105004440328834"
+        ixy="-1.46393267553268E-09"
+        ixz="4.20338333548613E-07"
+        iyy="0.00206250671247608"
+        iyz="-1.08983325220082E-05"
+        izz="0.0016621626233685" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/head.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/head.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="headnod"
+    type="continuous">
+    <origin
+      xyz="0 0.0199999999999965 0"
+      rpy="-3.14159265358972 0 -3.14159265358979" />
+    <parent
+      link="neck" />
+    <child
+      link="head" />
+    <axis
+      xyz="1 0 0" />
+  </joint>
+  <link
+    name="shoulder_left">
+    <inertial>
+      <origin
+        xyz="0.0379678486277052 0.000769141894110065 -2.39213562727714E-06"
+        rpy="0 0 0" />
+      <mass
+        value="0.186599858943339" />
+      <inertia
+        ixx="5.17887698655445E-05"
+        ixy="-3.6131473123237E-07"
+        ixz="-2.69385131196142E-09"
+        iyy="6.55209131446413E-05"
+        iyz="2.51731244782459E-07"
+        izz="7.48890121403808E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/shoulder_left.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 1 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/shoulder_left.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="shoulderspin_left"
+    type="continuous">
+    <origin
+      xyz="0.0895930270334383 -0.049988176702159 0.0336999979412967"
+      rpy="3.14159265358979 0 0" />
+    <parent
+      link="chest" />
+    <child
+      link="shoulder_left" />
+    <axis
+      xyz="1 0 0" />
+  </joint>
+  <link
+    name="bicep_left">
+    <inertial>
+      <origin
+        xyz="0.0702445760998589 -0.00493535596689239 0.040881861916669"
+        rpy="0 0 0" />
+      <mass
+        value="0.225660381914745" />
+      <inertia
+        ixx="6.79527039610844E-05"
+        ixy="2.38607126228181E-06"
+        ixz="-2.04705075385504E-05"
+        iyy="0.000124093043760199"
+        iyz="1.36497795361999E-06"
+        izz="8.85078218861284E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/bicep_left.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/bicep_left.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="biceplift_left"
+    type="continuous">
+    <origin
+      xyz="0.0555069729665617 0 0"
+      rpy="0 -1.04719755119659 -3.14159265358979" />
+    <parent
+      link="shoulder_left" />
+    <child
+      link="bicep_left" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="forearm_left">
+    <inertial>
+      <origin
+        xyz="-0.0116018774135875 0.000299738701450114 0.0422470684551958"
+        rpy="0 0 0" />
+      <mass
+        value="0.122044769210566" />
+      <inertia
+        ixx="2.03774107362909E-05"
+        ixy="7.27688670312671E-08"
+        ixz="1.08071532443292E-06"
+        iyy="3.66920316640895E-05"
+        iyz="-4.87769666305064E-07"
+        izz="2.60110395655514E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/forearm_left.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/forearm_left.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="elbow_left"
+    type="continuous">
+    <origin
+      xyz="0.0894604242109254 -0.00599999999998415 0.0516499999999964"
+      rpy="-1.04719755119659 0 -1.5707963267949" />
+    <parent
+      link="bicep_left" />
+    <child
+      link="forearm_left" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="wrist_left">
+    <inertial>
+      <origin
+        xyz="0.033592992021555 -1.7069395153238E-06 5.99015047757778E-05"
+        rpy="0 0 0" />
+      <mass
+        value="0.0865850219830415" />
+      <inertia
+        ixx="1.05400734755645E-05"
+        ixy="6.09869671072473E-10"
+        ixz="2.78063364221671E-07"
+        iyy="1.94215268634489E-05"
+        iyz="-7.78158226181486E-12"
+        izz="1.69864421867848E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/wrist_left.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/wrist_left.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="wristspin_left"
+    type="continuous">
+    <origin
+      xyz="0 0 0.0626303651163351"
+      rpy="1.5707963267949 -1.5707963267949 0" />
+    <parent
+      link="forearm_left" />
+    <child
+      link="wrist_left" />
+    <axis
+      xyz="-1 0 0" />
+  </joint>
+  <link
+    name="hand_left">
+    <inertial>
+      <origin
+        xyz="-0.0105247052604711 -0.0648933039712375 -0.000872205234437019"
+        rpy="0 0 0" />
+      <mass
+        value="0.128837214171465" />
+      <inertia
+        ixx="4.69379813841744E-05"
+        ixy="-9.56521745446478E-07"
+        ixz="-2.11675332368766E-08"
+        iyy="2.48637318819153E-05"
+        iyz="-4.97862646666923E-07"
+        izz="5.42655545775437E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/hand_left.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.501960784313725 0.501960784313725 0.501960784313725 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/hand_left.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="handcurl_left"
+    type="continuous">
+    <origin
+      xyz="0.0479000000000002 0 0.000394048821713455"
+      rpy="1.5707963267949 -1.5707963267949 0" />
+    <parent
+      link="wrist_left" />
+    <child
+      link="hand_left" />
+    <axis
+      xyz="-1 0 0" />
+  </joint>
+  <link
+    name="finger_left">
+    <inertial>
+      <origin
+        xyz="0.0507480945743438 -1.62767469780167E-08 0.0016659867905926"
+        rpy="0 0 0" />
+      <mass
+        value="0.0128536501124199" />
+      <inertia
+        ixx="9.79021274798924E-07"
+        ixy="5.71332614794142E-12"
+        ixz="-1.17280661983921E-06"
+        iyy="1.10158642614043E-05"
+        iyz="-7.52826107556098E-12"
+        izz="1.06103599644952E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/finger_left.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/finger_left.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="fingerextend_left"
+    type="prismatic">
+    <origin
+      xyz="0.0091629 -0.099585 0.018329"
+      rpy="0 1.5606 1.5708" />
+    <parent
+      link="hand_left" />
+    <child
+      link="finger_left" />
+    <axis
+      xyz="-1 0 0" />
+    <limit
+      lower="0"
+      upper="0.032"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="left_piece">
+    <inertial>
+      <origin
+        xyz="-2.77555756156289E-17 5.08576792468407E-06 -0.000499974134295582"
+        rpy="0 0 0" />
+      <mass
+        value="1.00000000000001E-06" />
+      <inertia
+        ixx="1.66666666666674E-13"
+        ixy="1.11951025948537E-27"
+        ixz="-9.83512545788395E-28"
+        iyy="1.66666666666666E-13"
+        iyz="-1.72074618293708E-27"
+        izz="1.66666666666672E-13" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/left_piece.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/left_piece.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="left_piece"
+    type="fixed">
+    <origin
+      xyz="0.103 0 0.01"
+      rpy="1.5606 0 -1.5708" />
+    <parent
+      link="finger_left" />
+    <child
+      link="left_piece" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="shoulder_right">
+    <inertial>
+      <origin
+        xyz="0.0379680901893608 2.22684798573819E-06 -0.00076916748786534"
+        rpy="0 0 0" />
+      <mass
+        value="0.18659811403779" />
+      <inertia
+        ixx="5.17881121423517E-05"
+        ixy="2.55946886631373E-09"
+        ixz="3.61258825228037E-07"
+        iyy="7.48884639273046E-05"
+        iyz="2.52137761360988E-07"
+        izz="6.55204577673154E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/shoulder_right.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/shoulder_right.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="shoulderspin_right"
+    type="continuous">
+    <origin
+      xyz="-0.0895930270334385 -0.049988176702158 0.0336999979412964"
+      rpy="1.5707963267949 0 3.14159265358979" />
+    <parent
+      link="chest" />
+    <child
+      link="shoulder_right" />
+    <axis
+      xyz="1 0 0" />
+  </joint>
+  <link
+    name="bicep_right">
+    <inertial>
+      <origin
+        xyz="0.0705270203828579 -0.00493532049221658 0.0403926583601547"
+        rpy="0 0 0" />
+      <mass
+        value="0.225660394658383" />
+      <inertia
+        ixx="6.56410845885085E-05"
+        ixy="2.37507236527247E-06"
+        ixz="-1.91358692082502E-05"
+        iyy="0.000124093055127608"
+        iyz="1.38405645599219E-06"
+        izz="9.0819533679339E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/bicep_right.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/bicep_right.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="biceplift_right"
+    type="continuous">
+    <origin
+      xyz="0.0555069729665654 0 0"
+      rpy="1.57079632679489 0 -1.04719755119659" />
+    <parent
+      link="shoulder_right" />
+    <child
+      link="bicep_right" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="forearm_right">
+    <inertial>
+      <origin
+        xyz="-0.0116017214756647 -0.00029952044410389 0.0420807012059288"
+        rpy="0 0 0" />
+      <mass
+        value="0.122045401496896" />
+      <inertia
+        ixx="2.03773004817873E-05"
+        ixy="-7.28689132198265E-08"
+        ixz="1.08074486723813E-06"
+        iyy="3.66920538867007E-05"
+        iyz="4.87849119269964E-07"
+        izz="2.60111326170049E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/forearm_right.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/forearm_right.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="elbow_right"
+    type="continuous">
+    <origin
+      xyz="0.0894604242109322 -0.00599999999996398 0.0516500000000004"
+      rpy="-1.04719755119659 0 -1.5707963267949" />
+    <parent
+      link="bicep_right" />
+    <child
+      link="forearm_right" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="wrist_right">
+    <inertial>
+      <origin
+        xyz="0.033592984586149 -1.69199924933416E-06 -5.99036508894812E-05"
+        rpy="0 0 0" />
+      <mass
+        value="0.0865849881218206" />
+      <inertia
+        ixx="1.05400662944613E-05"
+        ixy="5.65518400549219E-10"
+        ixz="-2.78066437663856E-07"
+        iyy="1.94215147024412E-05"
+        iyz="2.3197051409839E-12"
+        izz="1.69864272285832E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/wrist_right.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/wrist_right.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="wristspin_right"
+    type="continuous">
+    <origin
+      xyz="0 0 0.0623798575458761"
+      rpy="1.5707963267949 -1.5707963267949 0" />
+    <parent
+      link="forearm_right" />
+    <child
+      link="wrist_right" />
+    <axis
+      xyz="-1 0 0" />
+  </joint>
+  <link
+    name="hand_right">
+    <inertial>
+      <origin
+        xyz="0.0105246856186083 -0.0648985773393446 -0.000256654440970991"
+        rpy="0 0 0" />
+      <mass
+        value="0.128837390081252" />
+      <inertia
+        ixx="4.69379461324133E-05"
+        ixy="9.56673692334272E-07"
+        ixz="1.2043218814999E-08"
+        iyy="2.48570224652575E-05"
+        iyz="-2.18876222770782E-07"
+        izz="5.42725220054664E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/hand_right.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.501960784313725 0.501960784313725 0.501960784313725 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/hand_right.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="handcurl_right"
+    type="continuous">
+    <origin
+      xyz="0.0479 0 -0.00039405"
+      rpy="1.5708 -1.5708 0" />
+    <parent
+      link="wrist_right" />
+    <child
+      link="hand_right" />
+    <axis
+      xyz="1 0 0" />
+  </joint>
+  <link
+    name="finger_right">
+    <inertial>
+      <origin
+        xyz="0.0507481063507126 1.55652573052834E-08 -0.00166598364403364"
+        rpy="0 0 0" />
+      <mass
+        value="0.012853636259563" />
+      <inertia
+        ixx="9.79021165529009E-07"
+        ixy="-5.49054396652247E-12"
+        ixz="1.17280744898996E-06"
+        iyy="1.10158587629294E-05"
+        iyz="-7.55133894344613E-12"
+        izz="1.0610354825894E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/finger_right.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/finger_right.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="fingerextend_right"
+    type="prismatic">
+    <origin
+      xyz="-0.0091629 -0.099406 0.018636"
+      rpy="3.1416 1.5701 1.5708" />
+    <parent
+      link="hand_right" />
+    <child
+      link="finger_right" />
+    <axis
+      xyz="-1 0 0" />
+    <limit
+      lower="0"
+      upper="0.032"
+      effort="0"
+      velocity="0" />
+  </joint>
+  <link
+    name="right_piece">
+    <inertial>
+      <origin
+        xyz="-2.77555756156289E-17 3.43356740484246E-07 -0.000499999882106136"
+        rpy="0 0 0" />
+      <mass
+        value="9.99999999999977E-07" />
+      <inertia
+        ixx="1.66666666666661E-13"
+        ixy="-9.56219777590328E-28"
+        ixz="4.82618740074283E-29"
+        iyy="1.66666666666661E-13"
+        iyz="-2.72858833210046E-27"
+        izz="1.66666666666659E-13" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/right_piece.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/right_piece.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_piece"
+    type="fixed">
+    <origin
+      xyz="0.103 0 -0.01"
+      rpy="-1.5715 0 1.5708" />
+    <parent
+      link="finger_right" />
+    <child
+      link="right_piece" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="waist">
+    <inertial>
+      <origin
+        xyz="6.47387056114221E-08 -0.0234755784709256 -0.0260498502753056"
+        rpy="0 0 0" />
+      <mass
+        value="0.0611615204162974" />
+      <inertia
+        ixx="0.00011471596632614"
+        ixy="9.68364571949935E-11"
+        ixz="7.19383096141002E-12"
+        iyy="0.000110281855407316"
+        iyz="-6.66890283086462E-06"
+        izz="4.6904115231295E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/waist.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.498039215686275 0.498039215686275 0.498039215686275 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/waist.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="chestturn"
+    type="continuous">
+    <origin
+      xyz="0 -0.0499881767021596 -0.0948999999999957"
+      rpy="1.5707963267949 0 0" />
+    <parent
+      link="chest" />
+    <child
+      link="waist" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="abdominals">
+    <inertial>
+      <origin
+        xyz="-0.0163421916931593 0.0256590385646461 0.000189330925758901"
+        rpy="0 0 0" />
+      <mass
+        value="0.35483419015765" />
+      <inertia
+        ixx="0.00011885410628201"
+        ixy="2.86474483503506E-06"
+        ixz="-1.37081445975947E-06"
+        iyy="0.000137814112822546"
+        iyz="1.81278549835362E-08"
+        izz="0.000154972204999978" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/abdominals.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.752941176470588 1 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/abdominals.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="waistlean"
+    type="continuous">
+    <origin
+      xyz="0 -0.0689900000000004 0"
+      rpy="-1.57079628179123 0 -1.57079637971789" />
+    <parent
+      link="waist" />
+    <child
+      link="abdominals" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="pelvis">
+    <inertial>
+      <origin
+        xyz="0.0733083644548556 0.000220890774729817 -0.0116372750152702"
+        rpy="0 0 0" />
+      <mass
+        value="0.352160995834587" />
+      <inertia
+        ixx="0.000110135151026705"
+        ixy="1.78396057915457E-06"
+        ixz="-4.4052374318591E-07"
+        iyy="0.000157929413029985"
+        iyz="-3.90561440388992E-07"
+        izz="0.000140664786804368" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/pelvis.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/pelvis.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="abdominalcrunch"
+    type="continuous">
+    <origin
+      xyz="0 0.00390000028090912 0"
+      rpy="1.57079628179123 0 0" />
+    <parent
+      link="abdominals" />
+    <child
+      link="pelvis" />
+    <axis
+      xyz="0 -0.999999999999999 0" />
+  </joint>
+  <link
+    name="hip_left">
+    <inertial>
+      <origin
+        xyz="-0.0159417169679516 -0.0507406152240879 -0.000107116003213406"
+        rpy="0 0 0" />
+      <mass
+        value="0.178323498230762" />
+      <inertia
+        ixx="7.48278423624284E-05"
+        ixy="-4.30291644117186E-06"
+        ixz="2.15197390053553E-06"
+        iyy="8.36514436516522E-05"
+        iyz="1.34592826250188E-06"
+        izz="5.3244714763485E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/hip_left.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/hip_left.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="hiplift_left"
+    type="fixed">
+    <origin
+      xyz="0.0922000000000364 0.0216504605153932 -0.0122499987463194"
+      rpy="-3.14159260865937 0 0" />
+    <parent
+      link="pelvis" />
+    <child
+      link="hip_left" />
+    <axis
+      xyz="0 0 0" />
+  </joint>
+  <link
+    name="hipconnector_left">
+    <inertial>
+      <origin
+        xyz="0.000393513672309928 0.00115233496558004 -0.0145122152618364"
+        rpy="0 0 0" />
+      <mass
+        value="0.16959837738302" />
+      <inertia
+        ixx="5.76100520991764E-05"
+        ixy="-1.33563902286226E-10"
+        ixz="-1.3654189793363E-06"
+        iyy="7.23851094131937E-05"
+        iyz="-2.46453946014488E-07"
+        izz="4.3156155866898E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/hipconnector_left.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/hipconnector_left.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="hiprotate_left"
+    type="continuous">
+    <origin
+      xyz="0.0338004617004821 -0.0529559999948841 -0.0147414998447737"
+      rpy="3.14159265358979 0 -1.5707963267949" />
+    <parent
+      link="hip_left" />
+    <child
+      link="hipconnector_left" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="thigh_left">
+    <inertial>
+      <origin
+        xyz="-0.0166767135570175 -0.146730218813905 -7.21079933055369E-08"
+        rpy="0 0 0" />
+      <mass
+        value="0.212617510572296" />
+      <inertia
+        ixx="0.000175748173974962"
+        ixy="-1.57242417258232E-05"
+        ixz="-2.83755816975971E-10"
+        iyy="7.51307562351149E-05"
+        iyz="-7.1752387585952E-10"
+        izz="0.000204103006834921" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/thigh_left.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/thigh_left.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="thighlift_left"
+    type="continuous">
+    <origin
+      xyz="0 0 0"
+      rpy="0 0 0" />
+    <parent
+      link="hipconnector_left" />
+    <child
+      link="thigh_left" />
+    <axis
+      xyz="-1 0 0" />
+  </joint>
+  <link
+    name="shin_left">
+    <inertial>
+      <origin
+        xyz="-0.0191947752723657 -0.107044109961518 5.64018356710785E-05"
+        rpy="0 0 0" />
+      <mass
+        value="0.469932478922808" />
+      <inertia
+        ixx="0.00124519118459522"
+        ixy="-3.91808530107547E-06"
+        ixz="1.13537837713834E-07"
+        iyy="0.000136269320339022"
+        iyz="2.09973470851412E-06"
+        izz="0.001189303073533" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/shin_left.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.843137254901961 0.815686274509804 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/shin_left.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="knee_left"
+    type="continuous">
+    <origin
+      xyz="0 -0.182000000000035 0"
+      rpy="0 0 0" />
+    <parent
+      link="thigh_left" />
+    <child
+      link="shin_left" />
+    <axis
+      xyz="1 0 0" />
+  </joint>
+  <link
+    name="foot_left">
+    <inertial>
+      <origin
+        xyz="0.021021643653079 -0.0197084716132021 0.00769666280995268"
+        rpy="0 0 0" />
+      <mass
+        value="0.136967956083838" />
+      <inertia
+        ixx="0.000112329882078724"
+        ixy="3.80775501931109E-07"
+        ixz="-5.16835761523511E-06"
+        iyy="0.000105589512662563"
+        iyz="1.90409071557055E-06"
+        izz="3.962989411362E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/foot_left.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/foot_left.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="ankle_left"
+    type="continuous">
+    <origin
+      xyz="0 -0.208999999999965 0"
+      rpy="0 0 -1.5707963267949" />
+    <parent
+      link="shin_left" />
+    <child
+      link="foot_left" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="hip_right">
+    <inertial>
+      <origin
+        xyz="-0.0159417912058457 -0.0507404511042047 -0.0121426351992258"
+        rpy="0 0 0" />
+      <mass
+        value="0.178325356019819" />
+      <inertia
+        ixx="7.48309288540823E-05"
+        ixy="-4.30389425792722E-06"
+        ixz="-2.15169270922258E-06"
+        iyy="8.36532005356944E-05"
+        iyz="-1.34572050193524E-06"
+        izz="5.32477710987503E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/hip_right.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/hip_right.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="hiplift_right"
+    type="continuous">
+    <origin
+      xyz="0.0922000000000004 -0.021550001743436 0"
+      rpy="0 0 0" />
+    <parent
+      link="pelvis" />
+    <child
+      link="hip_right" />
+    <axis
+      xyz="0 0 0.999999999999999" />
+  </joint>
+  <link
+    name="hipconnector_right">
+    <inertial>
+      <origin
+        xyz="-0.0254977184505037 0.00039363240939809 -0.014512217658203"
+        rpy="0 0 0" />
+      <mass
+        value="0.169598389610505" />
+      <inertia
+        ixx="7.23851164418964E-05"
+        ixy="1.335087817038E-10"
+        ixz="-2.46477423607047E-07"
+        iyy="5.76100568779994E-05"
+        iyz="-1.36480189063409E-06"
+        izz="4.31561580351684E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/hipconnector_right.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/hipconnector_right.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="hiprotate_right"
+    type="continuous">
+    <origin
+      xyz="0.00714999999999943 -0.0529560001117616 0.00249149762454478"
+      rpy="0 0 3.14159265358979" />
+    <parent
+      link="hip_right" />
+    <child
+      link="hipconnector_right" />
+    <axis
+      xyz="1 0 0" />
+  </joint>
+  <link
+    name="thigh_right">
+    <inertial>
+      <origin
+        xyz="0.0166772397544571 -0.146730064941085 6.35478414473534E-08"
+        rpy="0 0 0" />
+      <mass
+        value="0.212620577008179" />
+      <inertia
+        ixx="0.000175734736800348"
+        ixy="1.57307494170166E-05"
+        ixz="-1.69653360246271E-10"
+        iyy="7.51349716176937E-05"
+        iyz="2.35918432138345E-11"
+        izz="0.000204093343017795" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/thigh_right.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/thigh_right.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="thighlift_right"
+    type="continuous">
+    <origin
+      xyz="-0.0266500000000009 0 0"
+      rpy="0 0 -1.57079632679489" />
+    <parent
+      link="hipconnector_right" />
+    <child
+      link="thigh_right" />
+    <axis
+      xyz="1 0 0" />
+  </joint>
+  <link
+    name="shin_right">
+    <inertial>
+      <origin
+        xyz="0.0819643742020751 0.0191947777500203 0.0688499080203898"
+        rpy="0 0 0" />
+      <mass
+        value="0.469931840650089" />
+      <inertia
+        ixx="0.000573424370708946"
+        ixy="-2.92761255459919E-06"
+        ixz="-0.000518881114735023"
+        iyy="0.00124518765715713"
+        iyz="-2.6051253864217E-06"
+        izz="0.000752143940858949" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/shin_right.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/shin_right.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="knee_right"
+    type="continuous">
+    <origin
+      xyz="0 -0.182 0"
+      rpy="0 0.698131851508002 -1.5707963267949" />
+    <parent
+      link="thigh_right" />
+    <child
+      link="shin_right" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+  <link
+    name="foot_right">
+    <inertial>
+      <origin
+        xyz="0.0211045932402013 -0.019707921479904 -0.00769985101601257"
+        rpy="0 0 0" />
+      <mass
+        value="0.136984841763002" />
+      <inertia
+        ixx="0.000112348860901305"
+        ixy="3.79947507327944E-07"
+        ixz="5.16784021319676E-06"
+        iyy="0.000105604595676954"
+        iyz="-1.90153078601709E-06"
+        izz="3.96355933451313E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/foot_right.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 0.752941176470588 0.752941176470588 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://master_magnet_hand_v5/meshes/foot_right.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="ankle_right"
+    type="continuous">
+    <origin
+      xyz="0.160103288611867 0 0.134342610424486"
+      rpy="3.14159265358979 -0.698131851508002 0" />
+    <parent
+      link="shin_right" />
+    <child
+      link="foot_right" />
+    <axis
+      xyz="0 1 0" />
+  </joint>
+</robot>
