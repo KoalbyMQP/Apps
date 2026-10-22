@@ -244,7 +244,7 @@ def main(show_viewer=True):
     sys.path.insert(0, _SIM_DIR)
 
     from genesis_setup import GenesisSetup
-    from movement_system import MovementSystem, _np
+    from OG_movement_system import MovementSystem, _np
 
     # --- 1. Define the target: over the middle right side of the board ----
     # Board spans x in [-0.1016, +0.1016], y in [0.135, 0.339]; mid-rank at
