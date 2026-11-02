@@ -207,7 +207,7 @@
     </collision>
   </link>
   <joint
-    name="shoulderspin_left"
+    name="l_shoulder_x"
     type="revolute">
     <origin
       xyz="0.0895930270334383 -0.049988176702159 0.0336999979412967"
@@ -268,7 +268,7 @@
     </collision>
   </link>
   <joint
-    name="biceplift_left"
+    name="l_shoulder_y"
     type="revolute">
     <origin
       xyz="0.0555069729665617 0 0"
@@ -329,7 +329,7 @@
     </collision>
   </link>
   <joint
-    name="elbow_left"
+    name="l_elbow_x"
     type="revolute">
     <origin
       xyz="0.0894604242109254 -0.00599999999998415 0.0516499999999964"
@@ -390,7 +390,7 @@
     </collision>
   </link>
   <joint
-    name="wristspin_left"
+    name="l_wrist_z"
     type="revolute">
     <origin
       xyz="0 0 0.0626303651163351"
@@ -451,7 +451,7 @@
     </collision>
   </link>
   <joint
-    name="handcurl_left"
+    name="l_wrist_x"
     type="revolute">
     <origin
       xyz="0.0479000000000002 0 0.000394048821713455"
@@ -512,7 +512,7 @@
     </collision>
   </link>
   <joint
-    name="fingerextend_left"
+    name="l_magnet"
     type="prismatic">
     <origin
       xyz="0.0091629 -0.099585 0.018329"
@@ -531,59 +531,6 @@
     <dynamics
       damping="0.02"
       friction="0.01" />
-  </joint>
-  <link
-    name="left_piece">
-    <inertial>
-      <origin
-        xyz="-2.77555756156289E-17 5.08576792468407E-06 -0.000499974134295582"
-        rpy="0 0 0" />
-      <mass
-        value="1.00000000000001E-06" />
-      <inertia
-        ixx="1.66666666666674E-13"
-        ixy="1.11951025948537E-27"
-        ixz="-9.83512545788395E-28"
-        iyy="1.66666666666666E-13"
-        iyz="-1.72074618293708E-27"
-        izz="1.66666666666672E-13" />
-    </inertial>
-    <visual>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh
-          filename="package://master_magnet_hand_v5/meshes/left_piece.STL" />
-      </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
-      </material>
-    </visual>
-    <collision>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh
-          filename="package://master_magnet_hand_v5/meshes/left_piece.STL" />
-      </geometry>
-    </collision>
-  </link>
-  <joint
-    name="left_piece"
-    type="fixed">
-    <origin
-      xyz="0.103 0 0.01"
-      rpy="1.5606 0 -1.5708" />
-    <parent
-      link="finger_left" />
-    <child
-      link="left_piece" />
-    <axis
-      xyz="0 0 0" />
   </joint>
   <link
     name="shoulder_right">
@@ -626,7 +573,7 @@
     </collision>
   </link>
   <joint
-    name="shoulderspin_right"
+    name="r_shoulder_x"
     type="revolute">
     <origin
       xyz="-0.0895930270334385 -0.049988176702158 0.0336999979412964"
@@ -687,7 +634,7 @@
     </collision>
   </link>
   <joint
-    name="biceplift_right"
+    name="r_shoulder_y"
     type="revolute">
     <origin
       xyz="0.0555069729665654 0 0"
@@ -748,7 +695,7 @@
     </collision>
   </link>
   <joint
-    name="elbow_right"
+    name="r_elbow_x"
     type="revolute">
     <origin
       xyz="0.0894604242109322 -0.00599999999996398 0.0516500000000004"
@@ -809,7 +756,7 @@
     </collision>
   </link>
   <joint
-    name="wristspin_right"
+    name="r_wrist_z"
     type="revolute">
     <origin
       xyz="0 0 0.0623798575458761"
@@ -870,7 +817,7 @@
     </collision>
   </link>
   <joint
-    name="handcurl_right"
+    name="r_wrist_x"
     type="revolute">
     <origin
       xyz="0.0479 0 -0.00039405"
@@ -931,7 +878,7 @@
     </collision>
   </link>
   <joint
-    name="fingerextend_right"
+    name="r_magnet"
     type="prismatic">
     <origin
       xyz="-0.0091629 -0.099406 0.018636"
@@ -950,59 +897,6 @@
     <dynamics
       damping="0.02"
       friction="0.01" />
-  </joint>
-  <link
-    name="right_piece">
-    <inertial>
-      <origin
-        xyz="-2.77555756156289E-17 3.43356740484246E-07 -0.000499999882106136"
-        rpy="0 0 0" />
-      <mass
-        value="9.99999999999977E-07" />
-      <inertia
-        ixx="1.66666666666661E-13"
-        ixy="-9.56219777590328E-28"
-        ixz="4.82618740074283E-29"
-        iyy="1.66666666666661E-13"
-        iyz="-2.72858833210046E-27"
-        izz="1.66666666666659E-13" />
-    </inertial>
-    <visual>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh
-          filename="package://master_magnet_hand_v5/meshes/right_piece.STL" />
-      </geometry>
-      <material
-        name="">
-        <color
-          rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
-      </material>
-    </visual>
-    <collision>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh
-          filename="package://master_magnet_hand_v5/meshes/right_piece.STL" />
-      </geometry>
-    </collision>
-  </link>
-  <joint
-    name="right_piece"
-    type="fixed">
-    <origin
-      xyz="0.103 0 -0.01"
-      rpy="-1.5715 0 1.5708" />
-    <parent
-      link="finger_right" />
-    <child
-      link="right_piece" />
-    <axis
-      xyz="0 0 0" />
   </joint>
   <link
     name="waist">

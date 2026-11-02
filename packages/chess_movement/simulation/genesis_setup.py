@@ -1,109 +1,93 @@
-# ============================================================
-# genesis_setup.py
-# Purpose: Builds simulation scene, and spawns : ground plane, robot, chess board, pieces.
 import os
-import warnings
-
-from numpy.distutils.fcompiler import none
-
-import chess
-import numpy as np
-
-warnings.filterwarnings("ignore", category=FutureWarning, message=r".*torch\.jit\.script.*is deprecated.*")
-import genesis as gs
 import time
-
+import warnings
+import chess
+import genesis as gs
+import numpy as np
+from simulation.chess_piece_dims import PIECE_DIMS
 
 class GenesisSetup:
+    """
+    OLD_genesis_setup.py
 
-    # Constructor - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    Purpose: Builds simulation scene, and spawns : ground plane, robot, chess board, graveyards, and pieces.
+    """
 
-    def __init__(self, urdf_file, show_viewer=True, robot_pos=(0.0, 0.0, 0.735), board_length=0.2032, physics_pieces=False, self_collide=False):
+# Constructor ==========================================================================================================
+
+    def __init__(self, urdf_file, show_viewer=True, robot_pos=(0.0, 0.0, 0.735), board_length=0.2032,
+                 physics_pieces=False, self_collide=False):
         """
-        Constructor: Initialize GenesisSetup.
+        Summary: Initialize GenesisSetup object.
 
-        :param self_collide: robot self-collision. OFF by default: this URDF
-               ships full-resolution CAD meshes as collision geometry, which
-               interpenetrate at adjacent joints and pin the arm mid-swing
-               (measured 192 mm end-effector error). With it off the arm can
-               visually clip through its own torso on body-crossing paths.
+        :param urdf_file: file path of robot's URDF.
+        :param show_viewer: False = headless simulation, True = viewer.
+        :param robot_pos: Spawn point for the robot URDF.
+        :param board_length: Length and width of chess board, from one edge of the play area to another. (1 tile = board_length / 8)
+        :param physics_pieces: True = pieces are dynamic bodies (convex hulls); False = pinned in place.
+        :param self_collide: True = robot links collide with each other. Keep False: this URDF ships
+                             full-resolution CAD meshes as collision geometry, which interpenetrate at
+                             adjacent joints and can pin the arm mid-swing (measured 192 mm EE error).
         """
+
+        # Use GPU
+        gs.init(backend=gs.gpu)
 
         # Set Variables
-        self.robot = none
+        self.robot = None
         self.urdf_file = urdf_file
         self.show_viewer = show_viewer
         self.robot_pos = robot_pos
         self.board_length = board_length
         self.PHYSICS_PIECES = physics_pieces
-        self.SELF_COLLIDE = self_collide
 
-        # Use GPU
-        self.scene = gs.init(backend = gs.gpu)
-
-        # Configure the rigid body solver options
-        rigid_options = gs.options.RigidOptions(
-            enable_self_collision=True,
-            enable_adjacent_collision=False,
-            # Set to True ONLY if your links don't overlappingly intersect at the joints
-        )
-
-        # Define Genesis Viewport Setting
+        # Define Genesis Scene Settings
         self.scene = gs.Scene(
-            # Show Viewport
 
-            show_viewer = self.show_viewer,
+            # Show Viewport
+            show_viewer=self.show_viewer,
 
             # Define resolution, camera position, camera angle, camera fov, and FPS
-            viewer_options = gs.options.ViewerOptions(
-                res=(1280, 960),
-                camera_pos=(2.2, 1.6, 1.8),
-                camera_lookat=(0.0, 0.25, 0.6),
-                camera_fov=40,
-                max_FPS=700,
+            viewer_options=gs.options.ViewerOptions(
+
+                res=(1280, 960),                        # resolution
+                camera_pos=(2.2, 1.6, 1.8),             # camera location
+                camera_lookat=(0.0, 0.25, 0.6),         # camera orientation
+                camera_fov=40,                          # camera fov
+                max_FPS=150,                            # simulation max framerate
             ),
-            rigid_options = gs.options.RigidOptions(
-                # Enable 'Neutral Collisions'
-                enable_neutral_collision=False,
-                # Robot self-collision: this URDF ships full-resolution CAD
-                # meshes as collision geometry, which interpenetrate at
-                # adjacent joints and can pin the arm mid-swing (measured
-                # 192 mm end-effector error on the old direct-line route).
-                # Toggle via GenesisSetup(self_collide=True/False).
-                enable_self_collision=self_collide,
-                # Physics Sim Step Time
-                dt=0.005,
-                # Reserve slots for the runtime magnet weld (added/removed live)
-                max_dynamic_constraints=4,
-                # Broad-phase candidate pair buffer: base * multiplier.
-                # Dense piece meshes + CoACD hulls + graveyard slabs overflowed
-                # the defaults (broad phase 150*8=1200, narrow phase 150*5=750)
-                # during settle.
-                max_collision_pairs=600,
+
+            # Configure the rigid body solver options
+            rigid_options=gs.options.RigidOptions(
+
+                enable_self_collision=self_collide,       # Robot self-collision (see __init__ param doc)
+                enable_adjacent_collision=False,        # Prevent adjacent pieces joint from clipping
+                dt=0.005,                               # Simulation tick speed.
+                max_dynamic_constraints=4,              # Runtime-added constraints reserved by solver
+                max_collision_pairs=600,                # Narrow-phase contact pairs processed by solver
                 multiplier_collision_broad_phase=32,
             )
         )
 
-        # Define Board Attributes (Default board is 8.0 in).
-        self.SQUARE = self.board_length / 8
-        self.BOARD_Y0 = 0.135
-        self.BOARD_TOP_Z = 0.62
-        self.BOARD_THICK = 0.02
-        self.BOARD_COLOR = (0.1, 0.1, 0.1)
-        self.LIGHT_SQ_COLOR = (0.8, 0.8, 0.8)
-        self.PILLAR_COLOR = (0.2, 0.2, 0.2)
+        # Define Board Attributes (Default board: 8.0 by 8.0 inches).
+        self.SQUARE = self.board_length / 8             # one square's width/length
+        self.BOARD_Y0 = 0.135 - 1.5 * self.SQUARE       # front edge of board (zero point in Y axis)
+        self.PEDESTAL_Y0 = 0.135                        # front edge of support pillar (zero point in Y axis)
+        self.BOARD_THICK = 0.02                         # Thickness of board
+        self.BOARD_COLOR = (0.1, 0.1, 0.1)              # Color of Dark Squares
+        self.LIGHT_SQ_COLOR = (0.8, 0.8, 0.8)           # Color of Light Squares
+        self.PILLAR_COLOR = (0.2, 0.2, 0.2)             # Color of support pillar
 
         # Define Piece Attributes — (max horizontal radius, height) in metres,
-        # measured from the low-poly meshes in chess_pieces/processed (scaled so
-        # king = 42 mm tall; bases 19.2 mm across fit the 25.4 mm squares).
-        self.PIECE_DIMS = {
-            chess.PAWN: (0.0096, 0.0306),
-            chess.ROOK: (0.0096, 0.0389),
-            chess.KNIGHT: (0.0097, 0.0411),
-            chess.BISHOP: (0.0097, 0.0417),
-            chess.QUEEN: (0.0097, 0.0420),
-            chess.KING: (0.0097, 0.0420),
-        }
+        # NOTE - (scaled so king = 42 mm tall; bases 19.2 mm across fit the 25.4 mm squares).
+        # Table lives in chess_piece_dims.py (shared with MovementSystem).
+        self.PIECE_DIMS = PIECE_DIMS
+
+        # Z height of board's playing surface.
+        # 2026-11 layout: travel height stays 0.63 (IK band unchanged); board is
+        # anchored so the PAWN press = full rack stroke: 0.63 - 0.032 (stroke)
+        # - 0.0175 (pawn height) = 0.5805. Must match MovementSystem.BOARD_TOP_Z.
+        self.BOARD_TOP_Z = 0.5805
 
         _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
         self.MESH_DIR = os.path.join(_SCRIPT_DIR, "chess_pieces", "processed")
@@ -115,59 +99,44 @@ class GenesisSetup:
         self.BLACK_COLOR = (0.15, 0.12, 0.10)
 
         # Piece material: PLA (1240 kg/m^3 solid) at 90% infill -> ~1116 kg/m^3.
-        # NOTE: real pieces carry a steel washer (~12-19 g total); pure-PLA hulls
-        # will be lighter. Recalibrate rho = target_mass / hull_volume later if
-        # weld/placement behavior looks too floaty.
+        # NOTE - (Physics details if we decide to move pieces later on)
         self.PIECE_RHO = 1240.0 * 0.90
         self.PIECE_FRICTION = 0.8
 
         # Graveyard: two queues, 16 slots each (2 cols x 8 rows), one per team.
-        # A captured piece goes to its OWN army's queue; promote() fetches from
-        # the promoting side's own queue.
+        # NOTE - A captured piece goes to its OWN army's queue;
         self.GRAVEYARD_SLOTS = 16
         self.graveyard: dict = {chess.WHITE: [None] * self.GRAVEYARD_SLOTS,
                                 chess.BLACK: [None] * self.GRAVEYARD_SLOTS}
-        # Which physical strip each team's queue maps to (set after reach check;
-        # right strip is the right arm's side).
-        self.graveyard_side = {chess.WHITE: "right", chess.BLACK: "left"}
 
-        # Magnet (electromagnet model): weld between finger link and held piece.
-        self.attached_piece = None
-
-        # URDF
-
-
-
-    # Methods - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Functions ============================================================================================================
 
     def spawn_plane(self):
         """
         Summary: (Helper) Place a ground plane in Genesis scene.
 
-        :return: NA
+        :return: The ground-plane in Genesis scene.
         """
         return self.scene.add_entity(gs.morphs.Plane())
 
-
     def square_center(self, sq):
         """
-        Summary:
-        :return:
+        Summary: (Helper) find X and Y coordinates of a given game square.
+
+        :param sq: Board square
+        :return: X and Y coordinates of square
         """
         f, r = chess.square_file(sq), chess.square_rank(sq)
         x = (f - 3.5) * self.SQUARE
         y = self.BOARD_Y0 + (r + 0.5) * self.SQUARE
         return x, y
 
-
-    def spawn_board(self, board_length):
+    def spawn_board(self):
         """
         Summary: (Helper) Place a chess board in Genesis scene with given dimensions.
 
-        :param board_length: size of chess board
-        :return: NA
+        :return: The chess board in Genesis scene.
         """
-
         # board slab
         board_w = 8 * self.SQUARE + 0.018
         board_cy = self.BOARD_Y0 + 4 * self.SQUARE
@@ -179,11 +148,12 @@ class GenesisSetup:
         )
 
         # pedestal
-        table_top = self.BOARD_TOP_Z - self.BOARD_THICK
+        pillar_height = self.BOARD_TOP_Z - self.BOARD_THICK
         pillar_w = board_w * 0.75
+        pedestal_cy = self.PEDESTAL_Y0 + 4 * self.SQUARE
         self.scene.add_entity(
-            gs.morphs.Box(size=(pillar_w, pillar_w, table_top),
-                          pos=(0.0, board_cy, table_top / 2),
+            gs.morphs.Box(size=(pillar_w, pillar_w, pillar_height),
+                          pos=(0.0, pedestal_cy, pillar_height / 2),
                           fixed=True, collision=True),
             surface=gs.surfaces.Default(color=self.PILLAR_COLOR),
         )
@@ -209,18 +179,19 @@ class GenesisSetup:
                  so the playing field reads as the raised stage.
 
         :param side: 'left' or 'right' — which side of the board the graveyard sits on.
-        :return: the graveyard slab entity
+        :return: the graveyard slab entity.
         """
         sign = 1.0 if side == "right" else -1.0
 
-        # mini slab: 2 columns x 8 rows of SQUARE, same thickness as the board,
-        # top surface 3 mm below the board top.
-        strip_w = 2 * self.SQUARE + 0.018
-        strip_d = 8 * self.SQUARE + 0.018
-        board_w = 8 * self.SQUARE + 0.018
-        strip_cx = sign * (board_w / 2 + strip_w / 2)
-        strip_cy = self.BOARD_Y0 + 4 * self.SQUARE
-        strip_top_z = self.BOARD_TOP_Z - 0.003
+        # Graveyard Attributes
+        strip_w = 2 * self.SQUARE + 0.018               # graveyard width (2 squares)
+        strip_d = 8 * self.SQUARE + 0.018               # graveyard depth (8 squares)
+        board_w = 8 * self.SQUARE + 0.018               # how wide the board actually is
+        strip_cx = sign * (board_w / 2 + strip_w / 2)   # how far left/right the graveyard's center sits
+        strip_cy = self.BOARD_Y0 + 4 * self.SQUARE      # how far forward/back the graveyard's center sits
+        strip_top_z = self.BOARD_TOP_Z - 0.003          # graveyard top surface height
+
+        # Create Entity + Add to Scene (function returns this entity)
         slab = self.scene.add_entity(
             gs.morphs.Box(size=(strip_w, strip_d, self.BOARD_THICK),
                           pos=(strip_cx, strip_cy, strip_top_z - self.BOARD_THICK / 2),
@@ -230,7 +201,7 @@ class GenesisSetup:
 
         # faint slot markers (visual only, no collision): 2 cols x 8 rows
         for i in range(self.GRAVEYARD_SLOTS):
-            x, y = self.graveyard_slot_xy(side, i)
+            x, y = self.grave_center(side, i)
             self.scene.add_entity(
                 gs.morphs.Box(size=(self.SQUARE * 0.9, self.SQUARE * 0.9, 0.001),
                               pos=(x, y, strip_top_z + 0.0005),
@@ -240,7 +211,7 @@ class GenesisSetup:
 
         return slab
 
-    def graveyard_slot_xy(self, side, slot):
+    def grave_center(self, side, slot):
         """
         Summary: World (x, y) of a graveyard slot. slot 0..15: column = slot//8
                  (0 = inner column, nearest the board), row = slot%8 (same y as
@@ -255,6 +226,7 @@ class GenesisSetup:
         col, row = slot // 8, slot % 8
         x = sign * (board_w / 2 + (col + 0.5) * self.SQUARE)
         y = self.BOARD_Y0 + (row + 0.5) * self.SQUARE
+
         return x, y
 
     def graveyard_enqueue(self, piece_color, piece_type, entity):
@@ -293,18 +265,16 @@ class GenesisSetup:
                 return (entry[0], entry[1], slot)
         return None
 
-
-
     def spawn_pieces(self):
         """
         Summary: (Helper) Place chess pieces in Genesis scene on chess board with correct spacing.
 
-        :return: NA
+        :return: dict mapping chess square -> piece entity.
         """
         self.piece_ent = {}  # chess square -> simulation entity
-        self.piece_h = {}  # entity -> piece height
-        self.piece_r = {}  # entity -> piece max radius (for keep-out checks)
-        self.piece_label = {}  # entity -> e.g. "white knight"
+        self.piece_h = {}  # entity -> piece height            # TODO: reserved for keep-out checks, unwired
+        self.piece_r = {}  # entity -> piece max radius        # TODO: reserved for keep-out checks, unwired
+        self.piece_label = {}  # entity -> e.g. "white knight"  # TODO: unwired
 
         for sq, piece in chess.Board().piece_map().items():
             rad, h = self.PIECE_DIMS[piece.piece_type]
@@ -326,77 +296,34 @@ class GenesisSetup:
             self.piece_label[ent] = (
                 f"{'white' if piece.color else 'black'} {chess.piece_name(piece.piece_type)}")
 
+        return self.piece_ent
 
     def spawn_robot(self):
         """
         Summary: (Helper) Place a robot in Genesis scene.
 
-        :return:
+        :return: The robot entity in Genesis scene.
         """
         self.robot = self.scene.add_entity(
             gs.morphs.URDF(file=self.urdf_file, pos=self.robot_pos,
                            quat=(0, 0, 0, 1), fixed=True)
         )
-        # The 'fixed' URDF base gets a collision box proxy at the root
-        # ('box_baselink'). The pedestal entity is a separate collision object
-        # at the same spot, so the wrist/hand report constant phantom contacts
-        # with the pedestal while reaching over it. The visible pedestal
-        # handles collisions; silence the invisible base proxy. NOTE: contype
-        # is baked into the solver at scene.build(), so this MUST run before
-        # build (spawn_robot does).
         for geom in self.robot.geoms:
             if "baselink" in geom.link.name:
                 geom._contype = 0
                 geom._conaffinity = 0
         return self.robot
 
-
-    # Magnet (electromagnet) - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-    def magnet_attach(self, piece_entity, arm="right"):
-        """
-        Summary: Energize the electromagnet: weld the finger link to the piece so
-                 physics carries it (swings, collides, falls if yanked — like the
-                 real magnet). Call when pad is within capture distance of the
-                 piece top. Requires scene.build() to have run.
-
-        :param piece_entity: the piece's simulation entity to latch.
-        :param arm: 'right' or 'left' — which hand's magnet.
-        :return: NA
-        """
-        if self.attached_piece is not None:
-            print("magnet already holding a piece; release first")
-            return
-        finger = self.robot.get_link(f"finger_{arm}")
-        self.scene.sim.rigid_solver.add_weld_constraint(
-            finger.idx, piece_entity.base_link.idx)
-        self.attached_piece = (piece_entity, arm)
-
-    def magnet_release(self):
-        """
-        Summary: De-energize the electromagnet: delete the weld so the piece is
-                 handed back to physics at the hand's current pose.
-
-        :return: NA
-        """
-        if self.attached_piece is None:
-            return
-        piece_entity, arm = self.attached_piece
-        finger = self.robot.get_link(f"finger_{arm}")
-        self.scene.sim.rigid_solver.delete_weld_constraint(
-            finger.idx, piece_entity.base_link.idx)
-        self.attached_piece = None
-
-
-    def setup(self, board_length = 100):
+    def setup(self):
         """
         Summary: Build Genesis scene with helper functions.
 
-        :return: NA
+        :return: List of objects in the Genesis scene.
         """
+
         # Run Helpers
         plane = self.spawn_plane()
-        board = self.spawn_board(board_length)
+        board = self.spawn_board()
         graveyard_right = self.spawn_grave_yard("right")
         graveyard_left = self.spawn_grave_yard("left")
         pieces = self.spawn_pieces()
@@ -413,35 +340,30 @@ class GenesisSetup:
         q_home = np.zeros(n)
 
         start_time = time.time()
-        settle_duration = 10.0
+        settle_duration = 2.0
         while time.time() - start_time < settle_duration:
             robot.control_dofs_position(q_home)  # must be every step, before step()
-            self.scene.step()
-
-        # (Testing) Run sim for 60s, so viewport can be examined
-        start_time = time.time()
-        duration = 60.0  # seconds
-
-        while time.time() - start_time < duration:
             self.scene.step()
 
         # Return list of object in scene.
         return [plane, board, pieces, robot]
 
-
-    # (Testing)  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Main =================================================================================================================
 
 def main():
-    print("Loading Genesis Setup: ")
 
-    # Set URDF
-    _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-    urdf_file = os.path.join(_SCRIPT_DIR, "master_magnet_hand_v5", "urdf", "master_magnet_hand_v5.urdf")
+        # Set URDF
+        _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+        urdf_file = os.path.join(_SCRIPT_DIR, "master_magnet_hand_v5", "urdf", "master_magnet_hand_v5.urdf")
 
-    # Run Simulation
-    sim = GenesisSetup(urdf_file)
-    sim.setup()
+        # Run Simulation
+        sim = GenesisSetup(urdf_file)
+        plane, board, pieces, robot = sim.setup()
 
+        # (Testing) step for 60s so the viewport can be examined
+        start = time.time()
+        while time.time() - start < 60.0:
+            sim.scene.step()
 
 if __name__ == "__main__":
     main()

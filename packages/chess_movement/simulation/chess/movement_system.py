@@ -1,360 +1,250 @@
-# ============================================================
-# movement_system.py
-# Purpose: Establish basic movement system for grasping and placing the end-effector, and moving it in 3d Space.
-#
-# Pipeline:  IK_solve (where do the joints need to end up?)
-#            -> movement_profile (how fast, with smooth ramps)
-#            -> move_to / _move_joints (send each tiny step to the controller)
-#            -> apply_profile (chain moves into lift -> travel -> descend)
-
 import numpy as np
-import os
-from simulation.genesis_setup import GenesisSetup
-
-
-def _np(x):
-    """(Helper) Convert torch tensors (cpu/cuda) or arrays to a float64 numpy array."""
-    if hasattr(x, "detach"):
-        x = x.detach()
-    if hasattr(x, "cpu"):
-        x = x.cpu()
-    if hasattr(x, "numpy"):
-        x = x.numpy()
-    return np.asarray(x, dtype=float)
-
-
+import chess
+from simulation.chess_piece_dims import PIECE_DIMS
 class MovementSystem:
-
-    # ---- Motion limits (joint space) ------------------------------------
-    ARM_SPEED = 0.5          # rad/s cruise (heavy arm: keep inside servo tracking bandwidth)
-    ARM_ACCEL = 1.5          # rad/s^2
-    DT = 0.005               # physics step (matches GenesisSetup RigidOptions dt)
-
-    # ---- Geometry --------------------------------------------------------
-    PAD_LOCAL = (0.083, 0.0, -0.0075)        # pad face in finger-link frame
-    PAD_DOWN_QUAT = (0.5, -0.5, 0.5, 0.5)    # (w,x,y,z) finger +x axis -> world -z (rack moves straight up/down)
-
-    # ---- Poses / limits (shoulderspin, biceplift, elbow, wristspin, handcurl)
-    CANONICAL_ARM = (1.0, 0.0, 1.0, 0.0, 0.5)   # verified pad-down posture, clear of the board
-    UP_POSTURE = (0.0, 1.5, 1.0, 0.0, 0.0)      # stopover so the wrist clears the graveyard slab
-    BRANCH_LO = (-1.0, -2.2, 0.2, -2.2, -1.0)   # keeps IK on the elbow-up branch
-    BRANCH_HI = (1.0, 2.2, 2.618, 2.2, 1.0)
-
-    # ---- Path planning / settling ----------------------------------------
-    SAFE_Z = 0.70            # pad height for travelling over the board
-    TILT_LIMIT_DEG = 20.0    # above this, the arm is not in the pad-down basin
-    REACH_TOL = 0.005        # m, warn if IK can't get the pad this close
-    SETTLE_TOL = 0.01        # rad, "arrived" threshold
-    SETTLE_MAX_TICKS = 600   # give up waiting after this many ticks
-
-    ARM_JOINTS = ["shoulderspin_right", "biceplift_right", "elbow_right",
-                  "wristspin_right", "handcurl_right"]
-    RACK_JOINT = "fingerextend_right"
-    FINGER_LINK = "finger_right"
-
-    def __init__(self, robot, scene):
-        """
-        Constructor: Initialize the class variables.
-
-        :param robot: Genesis robot entity (or None for dry tests).
-        :param scene: Genesis scene — required for stepped motions (move_to()).
-        """
-        self._robot = robot
-        self._scene = scene
-        self.current_position = None     # last commanded pad (X, Y, Z)
-
-        if robot is None:
-            return
-
-        # Store DOF state: look up indices/links once so every method can reuse them.
-        self._arm_dofs = [int(robot.get_joint(n).dofs_idx_local[0]) for n in self.ARM_JOINTS]
-        self._rack_dof = [int(robot.get_joint(self.RACK_JOINT).dofs_idx_local[0])]
-        self._finger_link = robot.get_link(self.FINGER_LINK)
-        self._link_idx = robot.links.index(self._finger_link)   # only used for the FK reach check
-
-    @staticmethod
-    def _quat_to_rot(q):
-        """(Helper) (w, x, y, z) quaternion -> 3x3 rotation matrix."""
-        w, x, y, z = (float(v) for v in q)
-        return np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - w * z), 2 * (x * z + w * y)],
-                         [2 * (x * y + w * z), 1 - 2 * (x * x + z * z), 2 * (y * z - w * x)],
-                         [2 * (x * z - w * y), 2 * (y * z + w * x), 1 - 2 * (x * x + y * y)]])
-
-    def pad_world_pos(self):
-        """(Helper) World position (3,) of the magnet pad face right now."""
-        pos = _np(self._finger_link.get_pos())
-        R = self._quat_to_rot(_np(self._finger_link.get_quat()))
-        return pos + R @ np.asarray(self.PAD_LOCAL)
-
-    def pad_axis_tilt_deg(self):
-        """(Helper) Angle between the rack/pad axis and straight down (0 = rack moves vertically)."""
-        axis = self._quat_to_rot(_np(self._finger_link.get_quat()))[:, 0]
-        return float(np.degrees(np.arccos(np.clip(axis @ np.array([0.0, 0.0, -1.0]), -1.0, 1.0))))
-
-
-    def IK_solve(self, target_X, target_Y, target_Z, magnet_orientation=None):
-        """
-        Summary: (Helper) convert target x, y, z, cartesian coords and magnet orientation to list of joint angles
-                 with Inverse Kinematics. Always seeded from CANONICAL_ARM so the elbow branch is the same every
-                 time, then clamped to BRANCH_LO/HI. Warns if the pad can't reach the goal.
-
-        :param target_X: world X where the pad face should end up.
-        :param target_Y: world Y where the pad face should end up.
-        :param target_Z: world Z where the pad face should end up.
-        :param magnet_orientation: (w, x, y, z) finger quaternion; None = pad-down.
-        :return: numpy array of 5 arm joint angles (rad), ordered like ARM_JOINTS.
-        """
-        quat = self.PAD_DOWN_QUAT if magnet_orientation is None else tuple(magnet_orientation)
-        pad_goal = np.array([target_X, target_Y, target_Z], dtype=float)
-
-        # IK solves for the finger LINK origin, not the pad face: back out the pad offset.
-        link_goal = pad_goal - self._quat_to_rot(quat) @ np.asarray(self.PAD_LOCAL)
-
-        seed = _np(self._robot.get_dofs_position())
-        seed[self._arm_dofs] = self.CANONICAL_ARM
-
-        q_full = _np(self._robot.inverse_kinematics(
-            link=self._finger_link,
-            pos=tuple(link_goal),
-            quat=quat,
-            init_qpos=seed,
-            dofs_idx_local=self._arm_dofs,
-            max_solver_iters=50,
-        ))
-        q_goal = np.clip(q_full[self._arm_dofs], self.BRANCH_LO, self.BRANCH_HI)
-
-        # Sanity check: clamping (or an unreachable goal) can leave the pad short of the target.
-        q_check = q_full.copy()
-        q_check[self._arm_dofs] = q_goal
-        pos, rot = self._robot.forward_kinematics(q_check, links_idx_local=[self._link_idx])
-        pos = _np(pos).reshape(-1, 3)[0]
-        R = self._quat_to_rot(_np(rot).reshape(-1, 4)[0])
-        err = float(np.linalg.norm(pos + R @ np.asarray(self.PAD_LOCAL) - pad_goal))
-        if err > self.REACH_TOL:
-            print(f"[IK] warning: pad ends {err * 1000:.1f} mm from goal "
-                  f"({target_X:.3f}, {target_Y:.3f}, {target_Z:.3f})")
-        return q_goal
-
-    def movement_profile(self, distance, v_max, a_max, dt=None):
-        """
-        Summary: (Helper) Build a trapezoidal velocity profile. Returns progress
-                 fractions 0..1 sampled every dt: ramp up at a_max, cruise at
-                 v_max, ramp down to zero. Falls back to a triangular profile
-                 when the move is too short to reach full speed.
-
-        :param distance: total joint distance to travel (abs value).
-        :param v_max: cruise speed limit.
-        :param a_max: acceleration limit.
-        :param dt: control tick (defaults to physics dt).
-        :return: list of progress fractions, first motion sample .. 1.0
-        """
-        dt = self.DT if dt is None else dt
-        if distance <= 0:
-            return []
-        if distance >= v_max * v_max / a_max:          # long enough: trapezoid
-            t_a = v_max / a_max
-            total = distance / v_max + t_a
-        else:                                          # short move: triangle
-            t_a = np.sqrt(distance / a_max)
-            total = 2.0 * t_a
-        n = max(2, int(np.ceil(total / dt)))
-        span = total / n                               # per-sample time
-        fracs = []
-        for k in range(1, n + 1):
-            t = k * span
-            t_rem = total - t
-            if t < t_a:                                # accelerating
-                s = 0.5 * a_max * t * t
-            elif t_rem < t_a:                          # decelerating
-                s = distance - 0.5 * a_max * t_rem * t_rem
-            else:                                      # cruising
-                v_peak = a_max * t_a
-                s = 0.5 * v_peak * t_a + v_peak * (t - t_a)
-            fracs.append(min(1.0, s / distance))
-        return fracs
-
-    def _settle(self, q_hold):
-        """(Helper) Keep commanding q_hold until the arm joints are within SETTLE_TOL (or time runs out)."""
-        for _ in range(self.SETTLE_MAX_TICKS):
-            self._robot.control_dofs_position(q_hold)
-            self._scene.step()
-            q_now = _np(self._robot.get_dofs_position())
-            if np.max(np.abs(q_now[self._arm_dofs] - q_hold[self._arm_dofs])) < self.SETTLE_TOL:
-                break
-
-    def _move_joints(self, q_goal, max_speed=None, dt=None, settle=True):
-        """
-        Summary: (Helper) Joint-space move: interpolate from the current arm angles to q_goal along the
-                 trapezoid profile, one controller command + one sim step per sample. All non-arm joints
-                 are held at their current values so they don't go limp under gravity.
-
-        :param q_goal: 5 target arm joint angles.
-        :param max_speed: cruise speed in rad/s (None = ARM_SPEED).
-        :param dt: control tick (None = physics dt).
-        :param settle: wait for the servos to arrive before returning.
-        :return: NA
-        """
-        v_max = self.ARM_SPEED if max_speed is None else max_speed
-        q_goal = np.asarray(q_goal, dtype=float)
-
-        q_full = _np(self._robot.get_dofs_position())     # snapshot: everything else is held here
-        q_start = q_full[self._arm_dofs].copy()
-        delta = q_goal - q_start
-        distance = float(np.max(np.abs(delta)))           # slowest (farthest) joint sets the pace
-        if distance < 1e-6:
-            return
-
-        for frac in self.movement_profile(distance, v_max, self.ARM_ACCEL, dt):
-            q_cmd = q_full.copy()
-            q_cmd[self._arm_dofs] = q_start + frac * delta   # every joint uses the SAME fraction
-            self._robot.control_dofs_position(q_cmd)
-            self._scene.step()
-
-        if settle:
-            q_final = q_full.copy()
-            q_final[self._arm_dofs] = q_goal
-            self._settle(q_final)
-
-
-    def move_to(self, target_X, target_Y, target_Z, magnet_orientation=None, max_speed=None, dt=None,
-                settle=True):
-        """
-        Summary: Solve IK for the target, then drive the arm there in joint space along a trapezoid profile.
-                 Each micro-step is sent to the controller and ticks the sim by one step.
-                 NOTE: the pad's path between start and goal is a curve, not a straight line — use
-                 apply_profile() for safe multi-leg travel.
-
-        :param target_X: world X for the pad face.
-        :param target_Y: world Y for the pad face.
-        :param target_Z: world Z for the pad face.
-        :param magnet_orientation: (w, x, y, z) finger quaternion; None = pad-down.
-        :param max_speed: cruise speed in rad/s (None = ARM_SPEED).
-        :param dt: control tick (None = physics dt).
-        :param settle: wait for the servos to arrive before returning.
-        :return: NA
-        """
-        q_goal = self.IK_solve(target_X, target_Y, target_Z, magnet_orientation)
-        self._move_joints(q_goal, max_speed, dt, settle)
-        self.current_position = (target_X, target_Y, target_Z)
-
-
-    def apply_profile(self, target_X, target_Y, target_Z, magnet_orientation=None, max_speed=None,
-                      safe_z=None):
-        """
-        Summary: (Helper) Use profile to plan lift travel and descent: (0) if the arm isn't in the pad-down
-                 posture yet, swing there via UP_POSTURE; (1) lift straight up to a safe height; (2) travel
-                 over at that height; (3) descend straight down onto the target.
-
-        :param target_X: world X for the pad face.
-        :param target_Y: world Y for the pad face.
-        :param target_Z: world Z for the pad face.
-        :param magnet_orientation: (w, x, y, z) finger quaternion; None = pad-down.
-        :param max_speed: cruise speed in rad/s (None = ARM_SPEED).
-        :param safe_z: travel height (None = SAFE_Z).
-        :return: NA
-        """
-        safe_z = self.SAFE_Z if safe_z is None else safe_z
-
-        # 0. Entry: from rest, go UP first, then to the pad-down posture (a direct swing clips the graveyard).
-        if self.pad_axis_tilt_deg() > self.TILT_LIMIT_DEG:
-            self._move_joints(self.UP_POSTURE, max_speed, settle=False)
-            self._move_joints(self.CANONICAL_ARM, max_speed)
-
-        x0, y0, z0 = self.pad_world_pos()
-        travel_z = max(safe_z, z0, target_Z)
-
-        # 1-3. Intermediate legs skip settling (they only need to be roughly there); the last one settles.
-        self.move_to(x0, y0, travel_z, magnet_orientation, max_speed, settle=False)            # lift
-        self.move_to(target_X, target_Y, travel_z, magnet_orientation, max_speed, settle=False)  # travel
-        self.move_to(target_X, target_Y, target_Z, magnet_orientation, max_speed)               # descend
-
-    def home(self):
-        """
-        Summary: call move_to, to a hard coded convenient position to rest safely.
-
-        :return:
-        """
-        pass
-
-    def waypoint(self):
-        """
-        Summary: call move_to, to a hard coded convenient position to start a turn.
-
-        :return:
-        """
-        pass
-
-    def grasp(self, piece_type):
-        """
-        Summary:
-
-        :param piece_type:
-        :return:
-        """
-        pass
-
-    def release(self, piece_type):
-        """
-        Summary:
-
-        :param piece_type:
-        :return:
-        """
-        pass
-
-
-# (Testing)  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-def main(show_viewer=True):
     """
-    Summary: Smoke-test: build the Genesis scene, then call move_to() once and report how close the pad got.
+    movement_system.py
 
-    :param show_viewer: open the Genesis viewer (False for headless runs).
-    :return: NA
+    Purpose: Implement basic movement functionality for the robot's arm in 3d Space (hardware or simulation).
     """
 
+# Class Attributes =====================================================================================================
 
-    # --- 1. Build the scene (spawn helpers + build only; we settle below instead of using setup()) ---
-    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # simulation/
-    urdf_file = os.path.join(here, "master_magnet_hand_v5", "urdf", "master_magnet_hand_v5.urdf")
-    sim = GenesisSetup(urdf_file, show_viewer=show_viewer)
-    sim.spawn_plane()
-    sim.spawn_board(sim.board_length)
-    sim.spawn_grave_yard("right")
-    sim.spawn_grave_yard("left")
-    sim.spawn_pieces()
-    sim.spawn_robot()
-    sim.scene.build()
+    # Chess-robot specifics (the stuff that is NOT general motion) ----
+    DOWN = (0.0, 0.0, -1.0)  # pad axis for press-down work
+    RACK_RETRACTED = 0.032  # must match ArmController (rack stroke top)
 
-    # Stronger gains than setup()'s defaults (arm sags under gravity otherwise), then settle on the zero pose.
-    n = sim.robot.n_dofs
-    sim.robot.set_dofs_kp(np.full(n, 500.0))
-    sim.robot.set_dofs_kv(np.full(n, 25.0))
-    sim.robot.set_dofs_force_range(np.full(n, -200.0), np.full(n, 200.0))
-    for _ in range(200):
-        sim.robot.control_dofs_position(np.zeros(n))
-        sim.scene.step()
+    # guards (from the 48-target validation)
+    SKIP_TOL = 0.05  # m, refuse the move if IK missed XY by more
+    ROT_LIMIT_DEG = 20.0  # refuse if the pad isn't aimed close enough
 
-    # --- 2. Move: pad face 40 mm above the board, mid-rank at the right edge ---
-    movement = MovementSystem(sim.robot, sim.scene)
+    # Poses (r_shoulder_x, r_shoulder_y, r_elbow_x, r_wrist_z, r_wrist_x)
+    CANONICAL_ARM = (1.0, 0.0, 1.0, 0.0, 0.5)
+    UP_POSTURE = (0.0, 0.8, 0.8, 0.0, 0.0)  # stopover so the wrist clears the graveyard slab
+    WAYPOINT_ARM = (1.62, -0.03, -1.57, -0.02, -1.53)
+    PEAK_ARM = (1.69, -0.36, -1.27, -1.67, 1.26)
+    REST_ARM = (0.0, 0.0, 0.0, 0.0, 0.0)
 
-    for _ in range(int(5 / MovementSystem.DT)):  # 30 / 0.005 = 6000 steps
-        sim.scene.step()
+    # Grasp & Release
+    TRAVEL_MARGIN = 0.0255  # pad rides this far above the tallest piece (0.63 travel anchor)
+    GRASP_PRESS = 0.002  # extra mm of rack travel into contact
+    BOARD_TOP_Z = 0.5805  # board playing surface world Z (must match GenesisSetup; hardware: calibrate once)
+    STROKE_EPS = 1e-9  # float slop so a full-stroke press (pawn) isn't rejected by rounding
 
-    goal1 = (0, 0, 0)
-    movement.move_to(*goal1)
+# Constructor ==========================================================================================================
 
-    goal2 = (0.27, 0.23, 0.7)
-    movement.move_to(*goal2)
+    def __init__(self, arm):
+        """
+        Summary: Initialize basic movement system object for moving and placing and using the end-effector in 3d Space.
 
-    goal5 = (0, 0, 0)
-    movement.move_to(*goal5)
+        :param arm:
+        """
 
-        # Keep the viewer open so the result can be inspected.
-    if show_viewer:
-        for _ in range(6000):
-            sim.scene.step()
+        self.arm = arm
+        self._hover_xy = []  
 
+# Functions ============================================================================================================
+
+    def grasp(self, piece_type, speed=None):
+        """
+        Summary: Grab a piece off the board using ONLY the rack & pinion. The caller
+                 has already used move_to() to place the pad over the piece's XY at
+                 travel height ("Start" Z); grasp does NOT call move_to(). It:
+
+                    1. Extends the rack down onto this piece's crown
+                       (target Z = surface + piece height; extension = Start - target)
+                    2. Toggles the electromagnet on to claim the piece
+                    3. Retracts the rack, carrying the piece up with the pad
+
+        :param piece_type: The type of piece to grab from the board.
+        :param speed: rack cruise speed m/s (None = RACK_SPEED default).
+        :return: True if the piece was grabbed, False if the press exceeded stroke.
+        """
+        start_z = self.BOARD_TOP_Z + max(h for _, h in PIECE_DIMS.values()) + self.TRAVEL_MARGIN
+        target_z = self.BOARD_TOP_Z + PIECE_DIMS[piece_type][1]
+        press = start_z - target_z
+        if press > self.RACK_RETRACTED + self.STROKE_EPS:
+            print(f"[grasp] SKIPPED {chess.piece_name(piece_type)}: press "
+                  f"{press * 1000:.1f}mm exceeds rack stroke {self.RACK_RETRACTED * 1000:.1f}mm")
+            return False
+        self.arm.move_rack(self.RACK_RETRACTED - press, speed)  # extend down onto crown
+        self.arm.toggle_magnet()                                # magnet on / claim piece
+        self.arm.move_rack(self.RACK_RETRACTED, speed)          # retract, piece rides up
+        print(f"[grasp] holding {chess.piece_name(piece_type)}")
+        return True
+
+    def release(self, piece_type, speed=None):
+        """
+        Summary: Place a piece the robot is already holding, using ONLY the rack &
+                 pinion (mirror of grasp). The caller has already used move_to() to
+                 place the pad over the destination XY at travel height ("Start" Z);
+                 release does NOT call move_to(). It:
+
+                    1. Extends the rack until the pad returns to the Z it held at
+                       energize (release-seat invariant, recorded by toggle_magnet):
+                       the piece hangs a fixed offset under the pad, so returning
+                       the pad to its seat Z sets the piece's base exactly on the
+                       surface — the early-stall and PD-sag cancel out. Falls back
+                       to the nominal press (surface + piece height) if no seat was
+                       recorded.
+                    2. Toggles the electromagnet off to drop the piece
+                    3. Retracts the rack, leaving the piece seated
+
+        :param piece_type: The type of piece to place on the board.
+        :param speed: rack cruise speed m/s (None = RACK_SPEED default).
+        :return: True if the piece was placed, False if the press exceeded stroke.
+        """
+        start_z = self.BOARD_TOP_Z + max(h for _, h in PIECE_DIMS.values()) + self.TRAVEL_MARGIN
+        target_z = self.BOARD_TOP_Z + PIECE_DIMS[piece_type][1]
+        press = start_z - target_z
+        if press > self.RACK_RETRACTED + self.STROKE_EPS:
+            print(f"[release] SKIPPED {chess.piece_name(piece_type)}: press "
+                  f"{press * 1000:.1f}mm exceeds rack stroke {self.RACK_RETRACTED * 1000:.1f}mm")
+            return False
+        seat = self.arm.seat_pad_z
+        if seat is not None:
+            cmd = self.arm.read_rack()                       # hold where we are
+            for _ in range(8):
+                drop = self.arm.pad_world_z() - seat
+                if abs(drop) < 0.0005:
+                    break
+                cmd = min(max(self.arm.read_rack() - drop, 0.0), self.RACK_RETRACTED)
+                self.arm.move_rack(cmd, speed)
+        else:
+            cmd = self.RACK_RETRACTED - press                # nominal fallback
+        self.arm.move_rack(cmd, speed)                      # extend down to seat piece
+        self.arm.toggle_magnet()                             # magnet off / drop piece
+        self.arm.move_rack(self.RACK_RETRACTED, speed)       # retract, piece stays
+        print(f"[release] placed {chess.piece_name(piece_type)}")
+        return True
+
+    def move_to(self, location=None, orientation=None, mode="X", speed=None):
+        """
+        Summary: Navigate the end-effector to target X, Y, Z location with given Pitch, Yaw, Roll orientation.
+                 Does so by calling arm_controller functions, and then verifies placement and orientation accuracy.
+
+        :param location: position tuple X,Y,Z.
+        :param orientation: rotation tuple Pitch,Yaw,Roll.
+        :param mode: passed through to ArmController.solve_ik.
+        :param speed: cruise rad/s (None = arm default).
+        :return: True if the arm moved, False if the goal was rejected (move skipped).
+        """
+        x, y, z = location
+        orient = np.asarray(self.DOWN if orientation is None else orientation, float)
+        q, pos_err, rot_err = self.arm.solve_ik(x, y, z, orient, mode=mode,
+                                                seed=self.arm.read_joints())
+        if pos_err > self.SKIP_TOL or rot_err > self.ROT_LIMIT_DEG:
+            print(f"[move_to] SKIPPED {location}: pos {pos_err * 1000:.0f}mm, rot {rot_err:.1f}deg")
+            return False
+        self.arm.move_joints(q, speed)
+        self._hover_xy = (x, y)  # remember the XY: grasp/release descend straight from here
+        return True
+
+    def rest_waypoint(self, speed=None):
+        """
+        Summary: Move the arm from resting spot, safe point around the edge of the board, and off
+                 to the side.
+
+        :param speed: Motion speed (in m/s)
+        :return: NA
+        """
+        self.arm.move_rack(self.RACK_RETRACTED)
+        self.arm.move_joints(self.UP_POSTURE, speed)  # Dont Clip Table
+
+    def chess_waypoint(self, speed=None):
+        """
+        Summary: Move the arm from over the board, to a safe point above the board, and off
+                 to the side. This will be the consistent (X:0, Y:0, Z:0) starting point. From this point it can start
+                 another turn.
+
+        :param speed: Motion speed (in m/s)
+        :return: NA
+        """
+        self.arm.move_rack(self.RACK_RETRACTED)
+        self.arm.move_joints(self.WAYPOINT_ARM, speed)
+
+    def peak_waypoint(self, speed=None):
+        """
+        Summary: Move the arm from over the board, to a safe point above the board, and off
+                 to the side. This will be the consistent (X:0, Y:0, Z:0) starting point. From this point it can start
+                 another turn.
+
+        :param speed: Motion speed (in m/s)
+        :return: NA
+        """
+        self.arm.move_rack(self.RACK_RETRACTED)
+        self.arm.move_joints(self.PEAK_ARM, speed)
+
+    def home(self, speed=None):
+        """
+        Summary: Safely take the arm from its current position to a resting position by the robots side.
+
+        :param speed: Motion speed (in m/s)
+        :return: NA
+        """
+        self.arm.move_joints((0.0, 0.8, 0.0, 0.0, 0.0), speed)
+        self.arm.move_joints(self.REST_ARM, speed)
+
+# Testing ==============================================================================================================
+
+def all_targets(sim):
+    """
+    Summary: (Test helper) Every place the pad can work: 64 squares + 2x16 graveyard
+             slots, as (name, (x, y, z)) tuples ready to splat into move_to().
+
+    :param sim: the GenesisSetup object (source of board geometry).
+    :return: list of (label, point).
+    """
+    z_board = sim.BOARD_TOP_Z + max(h for _, h in sim.PIECE_DIMS.values()) + MovementSystem.TRAVEL_MARGIN  # travel height over pieces
+    z_grave = z_board - 0.003  # strip top is 3mm lower
+    pts = [(chess.square_name(sq), (*sim.square_center(sq), z_board)) for sq in chess.SQUARES]
+    for side in ("left", "right"):
+        pts += [(f"grave_{side}_{i}", (*sim.grave_center(side, i), z_grave))
+                for i in range(sim.GRAVEYARD_SLOTS)]
+    return pts
+
+# Main =================================================================================================================
+
+def main():
+
+    # Setup ----------------------------------------------------------------------------------------------------------------
+
+    # Imports & Files
+    import os
+    from simulation.genesis_setup import GenesisSetup
+    from simulation.sim_arm_controller import SimArmController
+
+    _DIR = os.path.dirname(os.path.abspath(__file__))
+    urdf = os.path.join(_DIR, "..", "master_magnet_hand_v5", "urdf", "master_magnet_hand_v5.urdf")
+
+    # Simulation
+    sim = GenesisSetup(urdf)
+    sim.setup()
+
+    # Controller
+    arm = SimArmController(sim.scene, sim.robot, urdf, "right", sim.piece_ent)
+
+    # Movement System
+    ms = MovementSystem(arm)
+
+    # Test -----------------------------------------------------------------------------------------------------------------
+
+    # Operate Robot
+
+    ms.rest_waypoint()
+    ms.chess_waypoint()
+    ms.chess_waypoint()
+    ms.move_to((0.0635, 0.1096, 0.63))
+    ms.grasp(chess.PAWN)
+    ms.move_to((0.0381, 0.1604, 0.63))
+    ms.release(chess.PAWN)
+    ms.move_to((0.0127, 0.1350, 0.63))
+    ms.grasp(chess.PAWN)
+    ms.move_to((0.0127, 0.1858, 0.63))
+    ms.release(chess.PAWN)
+    ms.chess_waypoint()
+    ms.rest_waypoint()
+    ms.home()
 
 if __name__ == "__main__":
     main()

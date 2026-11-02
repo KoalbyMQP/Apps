@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: var(--app-font, ui-sans-serif, system-ui); color: var(--foreground);
+         background: transparent; margin: 0; padding: 14px; }
+  h3 { margin: 0 0 2px; font-size: 15px; }
+  .sub { color: var(--muted-foreground); font-size: 12px; margin-bottom: 10px; }
+  .wrap { display: flex; gap: 10px; align-items: flex-start; }
+  .grave { display: grid; grid-template-columns: repeat(2, 26px); grid-auto-rows: 26px; gap: 2px; }
+  .cell { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;
+          font-size: 10px; border: 1px solid var(--border); border-radius: 3px; cursor: pointer;
+          user-select: none; }
+  .board { display: grid; grid-template-columns: repeat(8, 34px); grid-auto-rows: 34px; gap: 0;
+           border: 2px solid var(--border); border-radius: 4px; overflow: hidden; }
+  .light { background: var(--card); }
+  .dark  { background: var(--accent); opacity: .92; }
+  .cell:hover { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .gcell { width: 26px; height: 26px; font-size: 9px; background: var(--card); }
+  .gcell:hover { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .glabel { font-size: 11px; color: var(--muted-foreground); text-align: center; margin-bottom: 4px; }
+  #out { margin-top: 12px; padding: 10px; border: 1px solid var(--border); border-radius: 6px;
+         background: var(--card); font-size: 13px; min-height: 58px; }
+  #out code { display: block; font-size: 13px; margin: 3px 0; white-space: pre; }
+  .name { font-weight: 600; }
+  .arm-r { color: #e07b39; } .arm-l { color: #3aa0e0; }
+  .hint { color: var(--muted-foreground); font-size: 12px; }
+  #tip { position: fixed; pointer-events: none; display: none; padding: 4px 8px; font-size: 11px;
+         background: var(--foreground); color: var(--card); border-radius: 4px; z-index: 10; white-space: pre; }
+</style>
+</head>
+<body>
+<h3>Tile → move_to() lookup</h3>
+<div class="sub">Robot view: rank 1 nearest, files a→h left→right. Travel Z = 0.63 (rack retracted). Click a square or grave slot to copy the call.</div>
+<div class="wrap">
+  <div>
+    <div class="glabel">left grave</div>
+    <div class="grave" id="gl"></div>
+  </div>
+  <div class="board" id="board"></div>
+  <div>
+    <div class="glabel">right grave</div>
+    <div class="grave" id="gr"></div>
+  </div>
+</div>
+<div id="out"><span class="hint">Hover for coordinates · click to pin the exact <code style="display:inline">ms.move_to(...)</code> call.</span></div>
+<div id="tip"></div>
+<script>
+const SQ = 0.0254, Y0 = 0.135 - 1.5 * SQ, ZT = 0.63, ZG = ZT - 0.003;
+const fmt = v => (v < 0 ? "-" : "") + Math.abs(v).toFixed(4);
+const tip = document.getElementById("tip"), out = document.getElementById("out");
+
+function tileXY(f, r) { return [(f - 3.5) * SQ, Y0 + (r + 0.5) * SQ]; }
+function graveXY(side, slot) {
+  const s = side === "right" ? 1 : -1, bw = 8 * SQ + 0.018;
+  return [s * (bw / 2 + (Math.floor(slot / 8) + 0.5) * SQ), Y0 + (slot % 8 + 0.5) * SQ];
+}
+function armOf(f) { return f >= 4 ? '<span class="arm-r">right arm</span>' : '<span class="arm-l">left arm</span>'; }
+
+function show(label, x, y, z, armHtml) {
+  out.innerHTML = `<span class="name">${label}</span> — ${armHtml}, travel Z ${z.toFixed(2)} (rack retracted)` +
+    `<code>ms.move_to((${fmt(x)}, ${fmt(y)}, ${z.toFixed(2)}))</code>` +
+    `<span class="hint">click text to copy · grasp descends via ms.grasp(piece) from this hover</span>`;
+  out.onclick = () => navigator.clipboard.writeText(`ms.move_to((${fmt(x)}, ${fmt(y)}, ${z.toFixed(2)}))`);
+}
+
+const board = document.getElementById("board");
+for (let r = 7; r >= 0; r--) for (let f = 0; f < 8; f++) {
+  const d = document.createElement("div");
+  d.className = "cell " + ((f + r) % 2 ? "dark" : "light");
+  d.textContent = "abcdefgh"[f] + (r + 1);
+  const [x, y] = tileXY(f, r);
+  d.onmousemove = e => { tip.style.display = "block"; tip.style.left = (e.clientX + 12) + "px";
+                         tip.style.top = (e.clientY + 12) + "px";
+                         tip.textContent = `${"abcdefgh"[f]}${r+1}  (${fmt(x)}, ${fmt(y)}, ${ZT})`; };
+  d.onmouseleave = () => tip.style.display = "none";
+  d.onclick = () => show("square " + "abcdefgh"[f] + (r + 1), x, y, ZT, armOf(f));
+  board.appendChild(d);
+}
+for (const [id, side] of [["gl", "left"], ["gr", "right"]]) {
+  const g = document.getElementById(id);
+  for (let slot = 0; slot < 16; slot++) {
+    const d = document.createElement("div");
+    d.className = "cell gcell";
+    d.textContent = slot;
+    const [x, y] = graveXY(side, slot);
+    d.onmousemove = e => { tip.style.display = "block"; tip.style.left = (e.clientX + 12) + "px";
+                           tip.style.top = (e.clientY + 12) + "px";
+                           tip.textContent = `grave ${side} ${slot}  (${fmt(x)}, ${fmt(y)}, ${ZG.toFixed(3)})`; };
+    d.onmouseleave = () => tip.style.display = "none";
+    d.onclick = () => show(`grave ${side} slot ${slot}`, x, y, ZG,
+                           side === "right" ? '<span class="arm-r">right arm</span>' : '<span class="arm-l">left arm</span>');
+    g.appendChild(d);
+  }
+}
+</script>
+</body>
+</html>
