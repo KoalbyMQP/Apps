@@ -161,6 +161,7 @@ class MovementSystem:
         :return: NA
         """
         self.arm.move_rack(self.RACK_RETRACTED)
+        self.arm.move_joints(self.UP_POSTURE, speed)
         self.arm.move_joints(self.WAYPOINT_ARM, speed)
 
     def peak_waypoint(self, speed=None):
