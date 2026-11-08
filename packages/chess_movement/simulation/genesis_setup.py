@@ -84,10 +84,10 @@ class GenesisSetup:
         self.PIECE_DIMS = PIECE_DIMS
 
         # Z height of board's playing surface.
-        # 2026-11 layout: travel height stays 0.63 (IK band unchanged); board is
-        # anchored so the PAWN press = full rack stroke: 0.63 - 0.032 (stroke)
-        # - 0.0175 (pawn height) = 0.5805. Must match MovementSystem.BOARD_TOP_Z.
-        self.BOARD_TOP_Z = 0.5805
+        # 2026-11 dowel layout (king 45 mm): travel pinned to waypoint pad Z (0.621);
+        # board floor from PAWN press fitting the 60 mm stroke: 0.621 - 0.060 - 0.0297
+        # = 0.5313; 0.535 keeps 3.7 mm of margin. Must match MovementSystem.BOARD_TOP_Z.
+        self.BOARD_TOP_Z = 0.535
 
         _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
         self.MESH_DIR = os.path.join(_SCRIPT_DIR, "chess_pieces", "processed")
@@ -354,7 +354,7 @@ def main():
 
         # Set URDF
         _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-        urdf_file = os.path.join(_SCRIPT_DIR, "master_magnet_hand_v5", "urdf", "master_magnet_hand_v5.urdf")
+        urdf_file = os.path.join(_SCRIPT_DIR, "master_assembly_v6", "urdf", "master_assembly_v6.urdf")
 
         # Run Simulation
         sim = GenesisSetup(urdf_file)

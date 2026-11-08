@@ -447,7 +447,7 @@ def main():
 
     # Set URDF
     _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-    urdf_file = os.path.join(_SCRIPT_DIR, "master_magnet_hand_v5", "urdf", "master_magnet_hand_v5.urdf")
+    urdf_file = os.path.join(_SCRIPT_DIR, "master_assembly_v6", "urdf", "master_assembly_v6.urdf")
 
     # Run Simulation
     sim = GenesisSetup(urdf_file)

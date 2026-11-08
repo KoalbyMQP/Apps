@@ -57,7 +57,7 @@ class HardwareArmController(ArmController):
         """
         Summary: Drive the rack & pinion to absolute extension v and hold it there.
 
-        :param v: target rack extension (m; 0 = pad lowest, RACK_RETRACTED = pad highest).
+        :param v: target rack extension (m; 0 = pad highest/retracted, RACK_RETRACTED = pad lowest).
         :param v_max: cruise speed m/s (None = RACK_SPEED).
         :return: NA
         """
@@ -79,12 +79,14 @@ class HardwareArmController(ArmController):
         """
         pass
 
-    def toggle_magnet(self):
+    def toggle_magnet(self) -> bool:
         """
-        Summary:
-        :return:
+        Summary: (Hardware stub, not yet implemented.) Energize/de-energize the
+                 electromagnet.
+        :return: True if attached/detached; False if nothing in range. The stub
+                 raises until the hardware driver exists.
         """
-        pass
+        raise NotImplementedError("hardware magnet not implemented")
 
     def carry_gap(self):
         """

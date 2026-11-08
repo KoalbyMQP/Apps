@@ -1,6 +1,7 @@
 import numpy as np
 import chess
 from simulation.chess_piece_dims import PIECE_DIMS
+
 class MovementSystem:
     """
     movement_system.py
@@ -12,7 +13,7 @@ class MovementSystem:
 
     # Chess-robot specifics (the stuff that is NOT general motion) ----
     DOWN = (0.0, 0.0, -1.0)  # pad axis for press-down work
-    RACK_RETRACTED = 0.032  # must match ArmController (rack stroke top)
+    RACK_RETRACTED = 0.060  # must match ArmController (rack stroke top)
 
     # guards (from the 48-target validation)
     SKIP_TOL = 0.05  # m, refuse the move if IK missed XY by more
@@ -22,13 +23,13 @@ class MovementSystem:
     CANONICAL_ARM = (1.0, 0.0, 1.0, 0.0, 0.5)
     UP_POSTURE = (0.0, 0.8, 0.8, 0.0, 0.0)  # stopover so the wrist clears the graveyard slab
     WAYPOINT_ARM = (1.62, -0.03, -1.57, -0.02, -1.53)
-    PEAK_ARM = (1.69, -0.36, -1.27, -1.67, 1.26)
     REST_ARM = (0.0, 0.0, 0.0, 0.0, 0.0)
 
     # Grasp & Release
-    TRAVEL_MARGIN = 0.0255  # pad rides this far above the tallest piece (0.63 travel anchor)
+    MAGNET_HEIGHT = 0.020
+    TRAVEL_MARGIN = 0.620 - 0.535 - 0.045  # -> 0.041; anchor 0.621 == waypoint pad Z (BOARD_TOP_Z + h_max + margin)
     GRASP_PRESS = 0.002  # extra mm of rack travel into contact
-    BOARD_TOP_Z = 0.5805  # board playing surface world Z (must match GenesisSetup; hardware: calibrate once)
+    BOARD_TOP_Z = 0.535  # board playing surface world Z (must match GenesisSetup; hardware: calibrate once)
     STROKE_EPS = 1e-9  # float slop so a full-stroke press (pawn) isn't rejected by rounding
 
 # Constructor ==========================================================================================================
@@ -45,7 +46,7 @@ class MovementSystem:
 
 # Functions ============================================================================================================
 
-    def grasp(self, piece_type, speed=None):
+    def toggle_grasp(self, piece_type, speed=None):
         """
         Summary: Grab a piece off the board using ONLY the rack & pinion. The caller
                  has already used move_to() to place the pad over the piece's XY at
@@ -60,62 +61,21 @@ class MovementSystem:
         :param speed: rack cruise speed m/s (None = RACK_SPEED default).
         :return: True if the piece was grabbed, False if the press exceeded stroke.
         """
-        start_z = self.BOARD_TOP_Z + max(h for _, h in PIECE_DIMS.values()) + self.TRAVEL_MARGIN
+        start_z = 0.621
+        #start_z = self.BOARD_TOP_Z + max(h for _, h in PIECE_DIMS.values()) + self.TRAVEL_MARGIN
         target_z = self.BOARD_TOP_Z + PIECE_DIMS[piece_type][1]
         press = start_z - target_z
         if press > self.RACK_RETRACTED + self.STROKE_EPS:
             print(f"[grasp] SKIPPED {chess.piece_name(piece_type)}: press "
                   f"{press * 1000:.1f}mm exceeds rack stroke {self.RACK_RETRACTED * 1000:.1f}mm")
             return False
-        self.arm.move_rack(self.RACK_RETRACTED - press, speed)  # extend down onto crown
-        self.arm.toggle_magnet()                                # magnet on / claim piece
-        self.arm.move_rack(self.RACK_RETRACTED, speed)          # retract, piece rides up
-        print(f"[grasp] holding {chess.piece_name(piece_type)}")
-        return True
-
-    def release(self, piece_type, speed=None):
-        """
-        Summary: Place a piece the robot is already holding, using ONLY the rack &
-                 pinion (mirror of grasp). The caller has already used move_to() to
-                 place the pad over the destination XY at travel height ("Start" Z);
-                 release does NOT call move_to(). It:
-
-                    1. Extends the rack until the pad returns to the Z it held at
-                       energize (release-seat invariant, recorded by toggle_magnet):
-                       the piece hangs a fixed offset under the pad, so returning
-                       the pad to its seat Z sets the piece's base exactly on the
-                       surface — the early-stall and PD-sag cancel out. Falls back
-                       to the nominal press (surface + piece height) if no seat was
-                       recorded.
-                    2. Toggles the electromagnet off to drop the piece
-                    3. Retracts the rack, leaving the piece seated
-
-        :param piece_type: The type of piece to place on the board.
-        :param speed: rack cruise speed m/s (None = RACK_SPEED default).
-        :return: True if the piece was placed, False if the press exceeded stroke.
-        """
-        start_z = self.BOARD_TOP_Z + max(h for _, h in PIECE_DIMS.values()) + self.TRAVEL_MARGIN
-        target_z = self.BOARD_TOP_Z + PIECE_DIMS[piece_type][1]
-        press = start_z - target_z
-        if press > self.RACK_RETRACTED + self.STROKE_EPS:
-            print(f"[release] SKIPPED {chess.piece_name(piece_type)}: press "
-                  f"{press * 1000:.1f}mm exceeds rack stroke {self.RACK_RETRACTED * 1000:.1f}mm")
+        self.arm.move_rack(press, speed)                      # extend down onto crown
+        if not self.arm.toggle_magnet():                      # magnet on / claim piece
+            self.arm.move_rack(0.0, speed)                    # nothing grabbed: retract, fail loudly
+            print(f"[grasp] FAILED {chess.piece_name(piece_type)}: magnet found nothing in range")
             return False
-        seat = self.arm.seat_pad_z
-        if seat is not None:
-            cmd = self.arm.read_rack()                       # hold where we are
-            for _ in range(8):
-                drop = self.arm.pad_world_z() - seat
-                if abs(drop) < 0.0005:
-                    break
-                cmd = min(max(self.arm.read_rack() - drop, 0.0), self.RACK_RETRACTED)
-                self.arm.move_rack(cmd, speed)
-        else:
-            cmd = self.RACK_RETRACTED - press                # nominal fallback
-        self.arm.move_rack(cmd, speed)                      # extend down to seat piece
-        self.arm.toggle_magnet()                             # magnet off / drop piece
-        self.arm.move_rack(self.RACK_RETRACTED, speed)       # retract, piece stays
-        print(f"[release] placed {chess.piece_name(piece_type)}")
+        self.arm.move_rack(0.0, speed)                          # retract, piece rides up
+        print(f"[grasp] holding {chess.piece_name(piece_type)}")
         return True
 
     def move_to(self, location=None, orientation=None, mode="X", speed=None):
@@ -140,18 +100,25 @@ class MovementSystem:
         self._hover_xy = (x, y)  # remember the XY: grasp/release descend straight from here
         return True
 
-    def rest_waypoint(self, speed=None):
+    def waypoint(self, start="home",speed=None):
         """
         Summary: Move the arm from resting spot, safe point around the edge of the board, and off
                  to the side.
 
+        :param start: Start location: "home" or "board"
         :param speed: Motion speed (in m/s)
         :return: NA
         """
-        self.arm.move_rack(self.RACK_RETRACTED)
-        self.arm.move_joints(self.UP_POSTURE, speed)  # Dont Clip Table
 
-    def chess_waypoint(self, speed=None):
+        if start == "home":
+            self.arm.move_rack(0.0)
+            self.arm.move_joints(self.UP_POSTURE, speed)  # Dont Clip Table
+            self.arm.move_joints(self.WAYPOINT_ARM, speed)
+
+        elif start == "board":
+            self.arm.move_joints(self.WAYPOINT_ARM, speed)
+
+    def turn_transition(self, speed=None):
         """
         Summary: Move the arm from over the board, to a safe point above the board, and off
                  to the side. This will be the consistent (X:0, Y:0, Z:0) starting point. From this point it can start
@@ -160,20 +127,7 @@ class MovementSystem:
         :param speed: Motion speed (in m/s)
         :return: NA
         """
-        self.arm.move_rack(self.RACK_RETRACTED)
-        self.arm.move_joints(self.WAYPOINT_ARM, speed)
-
-    def peak_waypoint(self, speed=None):
-        """
-        Summary: Move the arm from over the board, to a safe point above the board, and off
-                 to the side. This will be the consistent (X:0, Y:0, Z:0) starting point. From this point it can start
-                 another turn.
-
-        :param speed: Motion speed (in m/s)
-        :return: NA
-        """
-        self.arm.move_rack(self.RACK_RETRACTED)
-        self.arm.move_joints(self.PEAK_ARM, speed)
+        self.arm.move_joints((), speed)
 
     def home(self, speed=None):
         """
@@ -215,7 +169,7 @@ def main():
     from simulation.sim_arm_controller import SimArmController
 
     _DIR = os.path.dirname(os.path.abspath(__file__))
-    urdf = os.path.join(_DIR, "..", "master_magnet_hand_v5", "urdf", "master_magnet_hand_v5.urdf")
+    urdf = os.path.join(_DIR, "..", "master_assembly_v6", "urdf", "master_assembly_v6.urdf")
 
     # Simulation
     sim = GenesisSetup(urdf)
@@ -230,20 +184,33 @@ def main():
     # Test -----------------------------------------------------------------------------------------------------------------
 
     # Operate Robot
+    ms.waypoint("home")
 
-    ms.rest_waypoint()
-    ms.chess_waypoint()
-    ms.chess_waypoint()
-    ms.move_to((0.0635, 0.1096, 0.63))
-    ms.grasp(chess.PAWN)
-    ms.move_to((0.0381, 0.1604, 0.63))
-    ms.release(chess.PAWN)
-    ms.move_to((0.0127, 0.1350, 0.63))
-    ms.grasp(chess.PAWN)
-    ms.move_to((0.0127, 0.1858, 0.63))
-    ms.release(chess.PAWN)
-    ms.chess_waypoint()
-    ms.rest_waypoint()
+    # Move Pawn
+    ms.move_to((0.0127, 0.1350, 0.621))
+    ms.toggle_grasp(chess.PAWN)
+    ms.move_to((0.0127, 0.1858, 0.621))
+    ms.toggle_grasp(chess.PAWN)
+
+    # Move Rook
+    ms.move_to((0.0889, 0.1096, 0.621))
+    ms.toggle_grasp(chess.ROOK)
+    ms.move_to((0.0635, 0.1858, 0.621))
+    ms.toggle_grasp(chess.ROOK)
+
+    # Move Queen
+    ms.move_to((0.0127, 0.1096, 0.621))
+    ms.toggle_grasp(chess.KING)
+    ms.move_to((-0.0127, 0.1604, 0.621))
+    ms.toggle_grasp(chess.KING)
+
+    # Move Knight
+    ms.move_to((0.0635, 0.1096, 0.621))
+    ms.toggle_grasp(chess.KNIGHT)
+    ms.move_to((0.0381, 0.1604, 0.621))
+    ms.toggle_grasp(chess.KNIGHT)
+
+    ms.waypoint("board")
     ms.home()
 
 if __name__ == "__main__":

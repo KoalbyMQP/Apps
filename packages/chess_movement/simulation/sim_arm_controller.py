@@ -14,7 +14,9 @@ class SimArmController(ArmController):
 
 # Class Attributes =====================================================================================================
 
-    MAGNET_RANGE = 0.045
+    MAGNET_RANGE = 0.055  # pad->piece-BASE distance cap; tall dowel pieces (king press
+    # distance 45.4 mm) need > 0.045. Nearest-piece still disambiguates: at the king
+    # press, king=45.4 mm vs queen=51.2 mm; at the knight press, knight=38.3 vs pawn=45.1.
 
 # Constructor ==========================================================================================================
 
@@ -108,9 +110,9 @@ class SimArmController(ArmController):
             rf = Rotation.from_quat(np.roll(qf, -1))      # wxyz -> scipy xyzw
             lead = 0.0
             if self._rack_cmd is not None:
-                # finger moves -1*ext along its local x (URDF axis "-1 0 0")
+                # finger moves +1*ext along its local x (URDF axis "1 0 0"; q=0 retracted)
                 a = float(self.robot.get_dofs_position([self.magnet_dof_idx]).detach().cpu()[0])
-                lead = (self._rack_cmd - a) * -1.0
+                lead = (self._rack_cmd - a) * 1.0
             self.attached.set_pos(pf + rf.apply(self._carry_off + np.array([lead, 0.0, 0.0])))
             self.attached.set_quat(np.roll((rf * self._carry_rot).as_quat(), 1))  # xyzw -> wxyz
 
@@ -123,7 +125,7 @@ class SimArmController(ArmController):
                  mid-oscillation and made presses non-repeatable). Presses against a
                  piece can never reach v, so this caps the wait instead of asserting it.
 
-        :param v: target rack extension (m; 0 = pad lowest, RACK_RETRACTED = pad highest).
+        :param v: target rack extension (m; 0 = pad highest/retracted, RACK_RETRACTED = pad lowest).
         :param v_max: cruise speed m/s (None = RACK_SPEED).
         :return: NA
         """
@@ -156,24 +158,24 @@ class SimArmController(ArmController):
 
     def pad_world_z(self):
         """
-        Summary: World Z of the pad face (finger pose + PAD_LOCAL offset) — the same
+        Summary: World Z of the pad face (finger pose + TCP_LOCAL offset) — the same
                  point toggle_magnet measures the seat invariant with.
 
         :return: pad face world Z (m).
         """
         qf = np.asarray(self.ee_link.get_quat().detach().cpu(), dtype=float)
         pf = np.asarray(self.ee_link.get_pos().detach().cpu(), dtype=float)
-        return float((pf + self._quat_to_rot(qf) @ np.asarray(self.PAD_LOCAL, dtype=float))[2])
+        return float((pf + self._quat_to_rot(qf) @ np.asarray(self.TCP_LOCAL, dtype=float))[2])
 
     def read_rack(self):
         """
         Summary: Read the rack's current extension.
 
-        :return: current rack extension (m; 0 = pad lowest, RACK_RETRACTED = highest).
+        :return: current rack extension (m; 0 = pad highest/retracted, RACK_RETRACTED = lowest).
         """
         return float(self.robot.get_dofs_position([self.magnet_dof_idx]).detach().cpu()[0])
 
-    def toggle_magnet(self):
+    def toggle_magnet(self) -> bool:
         """
         Summary: Energize/de-energize the electromagnet (kinematic carry: the grabbed
                  piece itself is ghosted (no contacts) and snapped to the finger every
@@ -181,12 +183,13 @@ class SimArmController(ArmController):
                  it). Genesis welds proved too soft to carry through arm swings.
                  Call when the rack is already pressed (pad at the piece crown).
 
-        :return: NA
+        :return: True if a piece attached (energize) or detached (de-energize);
+                 False if energize found nothing in range.
         """
         if self.attached is None:                                   # -> energize
             pf = np.asarray(self.ee_link.get_pos().detach().cpu(), dtype=float)
             qf = np.asarray(self.ee_link.get_quat().detach().cpu(), dtype=float)
-            pad = pf + self._quat_to_rot(qf) @ np.asarray(self.PAD_LOCAL, dtype=float)
+            pad = pf + self._quat_to_rot(qf) @ np.asarray(self.TCP_LOCAL, dtype=float)
             best, best_d, best_pose = None, self.MAGNET_RANGE, None
             for ent in self.piece_ents.values():
                 pp = np.asarray(ent.get_pos().detach().cpu(), dtype=float)
@@ -196,7 +199,7 @@ class SimArmController(ArmController):
                     best_pose = (pp, np.asarray(ent.get_quat().detach().cpu(), dtype=float))
             if best is None:
                 print("magnet: nothing in range")
-                return
+                return False
             # Release-seat invariant: the piece's base sat on the surface at this
             # instant, so the pad's Z HERE is the exact Z release must return to.
             # The surface constant cancels — landing is exact regardless of hull
@@ -213,11 +216,13 @@ class SimArmController(ArmController):
                 geom._contype = 0
                 geom._conaffinity = 0
             self.attached = best
+            return True
         else:                                         # -> de-energize
             for geom in self.attached.geoms:      # un-ghost: already at its landing pose
                 geom._contype = 1
                 geom._conaffinity = 1
             self.attached = None
+        return True
 
 # Main =================================================================================================================
 
@@ -226,7 +231,7 @@ def main():
 
     # Set URDF
     _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-    urdf_file = os.path.join(_SCRIPT_DIR, "master_magnet_hand_v5", "urdf", "master_magnet_hand_v5.urdf")
+    urdf_file = os.path.join(_SCRIPT_DIR, "master_assembly_v6", "urdf", "master_assembly_v6.urdf")
 
     # Run Simulation
     sim = GenesisSetup(urdf_file)

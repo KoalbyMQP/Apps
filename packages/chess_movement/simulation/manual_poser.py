@@ -21,10 +21,11 @@ from urllib.parse import parse_qs, urlparse
 
 import numpy as np
 import genesis as gs
+from scipy.spatial.transform import Rotation
 
 import os as _os, sys as _sys
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))  # Chess Movement/
-from simulation.OLD_genesis_setup import GenesisSetup
+from simulation.genesis_setup import GenesisSetup
 
 PORT = 8014
 
@@ -40,12 +41,14 @@ GROUPS = [
               "ankle_right"]),
 ]
 
-# Pose presets copied from OLD_movement_system.py (right arm, r_shoulder_x..r_wrist_x).
+# Pose presets mirrored from movement_system.py (right arm, r_shoulder_x..r_wrist_x).
 RIGHT_ARM = ["r_shoulder_x", "r_shoulder_y", "r_elbow_x",
              "r_wrist_z", "r_wrist_x"]
 POSES = {
-    "canonical": dict(zip(RIGHT_ARM, [1.0, 0.0, 1.0, 0.0, 0.5])),   # CANONICAL_ARM
-    "up": dict(zip(RIGHT_ARM, [0.0, 1.5, 1.0, 0.0, 0.0])),          # UP_POSTURE
+    "canonical": dict(zip(RIGHT_ARM, [1.0, 0.0, 1.0, 0.0, 0.5])),    # CANONICAL_ARM
+    "up": dict(zip(RIGHT_ARM, [0.0, 0.8, 0.8, 0.0, 0.0])),           # UP_POSTURE
+    "waypoint": dict(zip(RIGHT_ARM, [1.62, -0.03, -1.57, -0.02, -1.53])),  # WAYPOINT_ARM
+    "peak": dict(zip(RIGHT_ARM, [1.69, -0.36, -1.27, -1.67, 1.26])),      # PEAK_ARM
 }
 
 _HTML = """<!doctype html><html><head><meta charset="utf-8"><title>MQP joint poser</title>
@@ -66,6 +69,8 @@ button:hover{background:#3182ce}
 <button onclick="pose('zero')">Zero (rack retracted)</button>
 <button onclick="pose('canonical')">CANONICAL arm</button>
 <button onclick="pose('up')">UP posture</button>
+<button onclick="pose('waypoint')">WAYPOINT arm</button>
+<button onclick="pose('peak')">PEAK arm</button>
 </div>
 <div id="rows"></div>
 <script>
@@ -134,8 +139,7 @@ def make_handler(state, lock, names, lo, hi, rack_dofs):
         with lock:
             if pose_name == "zero":
                 state["target"][:] = np.clip(0.0, lo, hi)
-                for i in rack_dofs:                       # rack: upper limit = retracted
-                    state["target"][i] = hi[i]
+                # v6 convention: rack q=0 IS the retracted stop - plain zeros are correct
             else:
                 for jn, val in POSES[pose_name].items():
                     i = names.index(jn)
@@ -185,28 +189,33 @@ def main():
     args = ap.parse_args()
 
     here = os.path.dirname(os.path.abspath(__file__))          # simulation/
-    urdf = os.path.join(here, "master_magnet_hand_v5", "urdf", "master_magnet_hand_v5.urdf")
+    urdf = os.path.join(here, "master_assembly_v6", "urdf", "master_assembly_v6.urdf")
 
     sim = GenesisSetup(urdf, show_viewer=not args.no_viewer)
     sim.spawn_plane()
-    sim.spawn_board(sim.board_length)
+    sim.spawn_board()
     sim.spawn_grave_yard("right")
     sim.spawn_grave_yard("left")
     sim.spawn_pieces()
     sim.spawn_robot()
+    # Debug marker: red sphere pinned to the right pad face every tick (tcp_local from
+    # arm_controller.ARMS["right"] — the exact point solve_ik places in 3D space).
+    TCP_LOCAL = np.array((0.128, 0.0, -0.0116))
+    pad_marker = sim.scene.add_entity(gs.morphs.Sphere(radius=0.006, pos=(0.0, 0.0, 2.0),
+                                                       fixed=True, collision=False),
+                                      surface=gs.surfaces.Default(color=(1.0, 0.0, 0.0, 1.0)))
     sim.scene.build()
 
-    # Same servo gains the movement system uses, so the arm behaves identically.
+    # Same servo gains genesis_setup.setup() uses, so the arm behaves identically.
     n = sim.robot.n_dofs
-    sim.robot.set_dofs_kp(np.full(n, 500.0))
-    sim.robot.set_dofs_kv(np.full(n, 25.0))
-    sim.robot.set_dofs_force_range(np.full(n, -200.0), np.full(n, 200.0))
+    sim.robot.set_dofs_kp(np.full(n, 60.0))
+    sim.robot.set_dofs_kv(np.full(n, 4.0))
+    sim.robot.set_dofs_force_range(np.full(n, -10.0), np.full(n, 10.0))
 
     dofs, names, lo, hi = motor_info(sim.robot)
+    finger_link = sim.robot.get_link("finger_right")   # pad marker follows this link
     rack_dofs = [i for i, nm in enumerate(names) if nm.endswith("_magnet")]
-    target = np.clip(np.zeros(len(dofs)), lo, hi)
-    for i in rack_dofs:
-        target[i] = hi[i]
+    target = np.clip(np.zeros(len(dofs)), lo, hi)   # v6: rack q=0 = retracted stop
     state = {"target": target, "actual": target.copy(), "slots": slots_of(names, lo, hi)}
     lock = threading.Lock()
 
@@ -222,6 +231,12 @@ def main():
                 q = target.copy()
             sim.robot.control_dofs_position(q, dofs)
             sim.scene.step()
+            # Pin the red pad marker to the finger: finger pose + TCP_LOCAL (same math
+            # as sim_arm_controller.pad_world_z).
+            qf = np.asarray(finger_link.get_quat().detach().cpu(), dtype=float)
+            pf = np.asarray(finger_link.get_pos().detach().cpu(), dtype=float)
+            pad_w = pf + Rotation.from_quat(np.roll(qf, -1)).apply(TCP_LOCAL)
+            pad_marker.set_pos(pad_w.tolist())
             with lock:
                 state["actual"] = np.asarray(sim.robot.get_dofs_position(dofs).detach().cpu(), dtype=float)
     except KeyboardInterrupt:

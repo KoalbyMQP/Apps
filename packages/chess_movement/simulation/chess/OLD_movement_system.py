@@ -387,7 +387,7 @@ def main(show_viewer=True):
 
     # --- 1. Build the scene (spawn helpers + build only; we settle below instead of using setup()) ---
     here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # simulation/
-    urdf_file = os.path.join(here, "master_magnet_hand_v5", "urdf", "master_magnet_hand_v5.urdf")
+    urdf_file = os.path.join(here, "master_assembly_v6", "urdf", "master_assembly_v6.urdf")
     sim = GenesisSetup(urdf_file, show_viewer=show_viewer)
     sim.spawn_plane()
     sim.spawn_board(sim.board_length)
