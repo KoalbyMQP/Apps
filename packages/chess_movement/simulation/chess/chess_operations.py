@@ -35,7 +35,7 @@ class ChessOrchestrator:
 
     def start_stockfish(self):
         if self.engine is None:
-            self.engine = chess.engine.SimpleEngine.popen_uci("/usr/games/stockfish_logic")
+            self.engine = chess.engine.SimpleEngine.popen_uci("/usr/games/stockfish")
     
     def get_stockfish_move(self):
         if self.board.is_game_over():
@@ -314,36 +314,6 @@ class ChessOrchestrator:
         self.held_piece_type = piece_type
         return self.movement.grasp(piece_type)
 
-    def promote(self, start_location, end_location, promotion_type):
-        """
-        Summary: Promotion. Retire the pawn to the graveyard, fetch the
-                 promotion piece from its graveyard slot, place it on the
-                 promotion square, and push the move on the logic board.
-
-        :param start_location: (file, rank) of the pawn.
-        :param end_location: (file, rank) of the promotion square.
-        :param promotion_type: piece symbol, e.g. 'q'.
-        :return: NA
-        """
-        piece_type = chess.Piece.from_symbol(promotion_type.upper()).piece_type
-        slot = self.PROMOTION_SLOTS[piece_type]
-        promo_world = (self.GRAVEYARD_X0 + slot[1] * self.GRAVEYARD_PITCH,
-                       self.GRAVEYARD_Y)
-
-        pawn_index = self.CAPTURE_GRAVEYARD_START + len(self.graveyard)
-        pawn_world = (self.GRAVEYARD_X0 + pawn_index * self.GRAVEYARD_PITCH,
-                      self.GRAVEYARD_Y)
-
-        # Pawn out to the graveyard, promotion piece in.
-        self._physically_move(self.board_conversion(start_location), pawn_world)
-        self.graveyard.append((chess.PAWN, self.board.turn,
-                               ("graveyard", pawn_index)))
-        self._physically_move(promo_world, self.board_conversion(end_location))
-
-        self.commit_move(chess.Move(chess.square(*start_location),
-                                    chess.square(*end_location),
-                                    promotion=piece_type))
-
     def promote_piece(self, move):
         promoted_piece = move.promotion
         self.held_piece_type = promoted_piece
@@ -448,8 +418,8 @@ def main(show_viewer=True):
     _SIM_DIR = os.path.dirname(_HERE)
     sys.path.insert(0, _SIM_DIR)
 
-    from simulation.genesis_setup import GenesisSetup
-    from simulation.chess.OLD_movement_system import MovementSystem, _np
+    from genesis_setup import GenesisSetup
+    from OG_movement_system import MovementSystem, _np
 
     # --- 1. Define the target: over the middle right side of the board ----
     # Board spans x in [-0.1016, +0.1016], y in [0.135, 0.339]; mid-rank at
@@ -461,8 +431,8 @@ def main(show_viewer=True):
 
     # --- 2. Build the scene (spawn helpers + build only — the settle/idle
     #        loops in setup() are left untouched; we settle here instead). --
-    urdf_file = os.path.join(_SIM_DIR, "master_assembly_v6", "urdf",
-                             "master_assembly_v6.urdf")
+    urdf_file = os.path.join(_SIM_DIR, "master_magnet_hand_v5", "urdf",
+                             "master_magnet_hand_v5.urdf")
     sim = GenesisSetup(urdf_file, show_viewer=show_viewer)
     sim.spawn_plane()
     sim.spawn_board(sim.board_length)
