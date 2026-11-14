@@ -15,22 +15,34 @@ class MovementSystem:
     DOWN = (0.0, 0.0, -1.0)  # pad axis for press-down work
     RACK_RETRACTED = 0.060  # must match ArmController (rack stroke top)
 
-    # guards (from the 48-target validation)
-    SKIP_TOL = 0.05  # m, refuse the move if IK missed XY by more
-    ROT_LIMIT_DEG = 20.0  # refuse if the pad isn't aimed close enough
+    # guards (from the right arm's 48-target validation; left needs its own run)
+    RIGHT_SKIP_TOL = 0.05  # m, refuse the move if IK missed XY by more
+    LEFT_SKIP_TOL = 0.05  # PLACEHOLDER: copied from right, re-tune after left 48-target run
+    RIGHT_ROT_LIMIT_DEG = 20.0  # refuse if the pad isn't aimed close enough
+    LEFT_ROT_LIMIT_DEG = 20.0  # PLACEHOLDER: copied from right, re-tune after left 48-target run
 
-    # Poses (r_shoulder_x, r_shoulder_y, r_elbow_x, r_wrist_z, r_wrist_x)
-    CANONICAL_ARM = (1.0, 0.0, 1.0, 0.0, 0.5)
-    UP_POSTURE = (0.0, 0.8, 0.8, 0.0, 0.0)  # stopover so the wrist clears the graveyard slab
-    WAYPOINT_ARM = (1.62, -0.03, -1.57, -0.02, -1.53)
-    REST_ARM = (0.0, 0.0, 0.0, 0.0, 0.0)
+    # Poses (shoulder_x, shoulder_y, elbow_x, wrist_z, wrist_x). RIGHT = validated r_* joints.
+    # LEFT = mirrored by the poser-verified rule: flip shoulder_x, shoulder_y, wrist_z,
+    # wrist_x; keep elbow_x. (Poser slider order is sx,sy,elbow,wrist_x,wrist_z — the last
+    # two swap when transcribing posed values into these tuples.)
+    RIGHT_CANONICAL_ARM = (1.0, 0.0, 1.0, 0.0, 0.5)
+    LEFT_CANONICAL_ARM = (-1.0, 0.0, 1.0, 0.0, -0.5)
+    RIGHT_UP_POSTURE = (0.0, 0.8, 0.8, 0.0, 0.0)  # stopover so the wrist clears the graveyard slab
+    LEFT_UP_POSTURE = (0.0, -0.8, 0.8, 0.0, 0.0)
+    RIGHT_WAYPOINT_ARM = (1.62, -0.03, -1.57, -0.02, -1.53)
+    LEFT_WAYPOINT_ARM = (-1.62, 0.03, -1.57, 0.02, 1.53)
+    RIGHT_REST_ARM = (0.0, 0.0, 0.0, 0.0, 0.0)
+    LEFT_REST_ARM = (0.0, 0.0, 0.0, 0.0, 0.0)
+    RIGHT_HOME_STOP = (0.0, 0.8, 0.0, 0.0, 0.0)  # home() stopover before rest
+    LEFT_HOME_STOP = (0.0, -0.8, 0.0, 0.0, 0.0)
 
     # Grasp & Release
     MAGNET_HEIGHT = 0.020
-    TRAVEL_MARGIN = 0.620 - 0.535 - 0.045  # -> 0.041; anchor 0.621 == waypoint pad Z (BOARD_TOP_Z + h_max + margin)
     GRASP_PRESS = 0.002  # extra mm of rack travel into contact
     BOARD_TOP_Z = 0.535  # board playing surface world Z (must match GenesisSetup; hardware: calibrate once)
     STROKE_EPS = 1e-9  # float slop so a full-stroke press (pawn) isn't rejected by rounding
+    RIGHT_TRAVEL_Z = 0.621  # grasp start Z: anchor == right waypoint pad Z (h_max + margin)
+    LEFT_TRAVEL_Z = 0.621  # PLACEHOLDER: right anchor; left reach envelope may need its own anchor
 
 # Constructor ==========================================================================================================
 
@@ -38,11 +50,31 @@ class MovementSystem:
         """
         Summary: Initialize basic movement system object for moving and placing and using the end-effector in 3d Space.
 
-        :param arm:
+        :param arm: an ArmController (sim or hardware); its arm_name picks the pose set.
         """
 
         self.arm = arm
-        self._hover_xy = []  
+        self._hover_xy = []
+
+        # Resolve arm-specific constants once; function bodies stay single-path.
+        if arm.arm_name == "right":
+            self.skip_tol = self.RIGHT_SKIP_TOL
+            self.rot_limit_deg = self.RIGHT_ROT_LIMIT_DEG
+            self.canonical_arm = self.RIGHT_CANONICAL_ARM
+            self.up_posture = self.RIGHT_UP_POSTURE
+            self.waypoint_arm = self.RIGHT_WAYPOINT_ARM
+            self.rest_arm = self.RIGHT_REST_ARM
+            self.home_stop = self.RIGHT_HOME_STOP
+            self.travel_z = self.RIGHT_TRAVEL_Z
+        else:
+            self.skip_tol = self.LEFT_SKIP_TOL
+            self.rot_limit_deg = self.LEFT_ROT_LIMIT_DEG
+            self.canonical_arm = self.LEFT_CANONICAL_ARM
+            self.up_posture = self.LEFT_UP_POSTURE
+            self.waypoint_arm = self.LEFT_WAYPOINT_ARM
+            self.rest_arm = self.LEFT_REST_ARM
+            self.home_stop = self.LEFT_HOME_STOP
+            self.travel_z = self.LEFT_TRAVEL_Z  
 
 # Functions ============================================================================================================
 
@@ -61,8 +93,7 @@ class MovementSystem:
         :param speed: rack cruise speed m/s (None = RACK_SPEED default).
         :return: True if the piece was grabbed, False if the press exceeded stroke.
         """
-        start_z = 0.621
-        #start_z = self.BOARD_TOP_Z + max(h for _, h in PIECE_DIMS.values()) + self.TRAVEL_MARGIN
+        start_z = self.travel_z
         target_z = self.BOARD_TOP_Z + PIECE_DIMS[piece_type][1]
         press = start_z - target_z
         if press > self.RACK_RETRACTED + self.STROKE_EPS:
@@ -93,7 +124,7 @@ class MovementSystem:
         orient = np.asarray(self.DOWN if orientation is None else orientation, float)
         q, pos_err, rot_err = self.arm.solve_ik(x, y, z, orient, mode=mode,
                                                 seed=self.arm.read_joints())
-        if pos_err > self.SKIP_TOL or rot_err > self.ROT_LIMIT_DEG:
+        if pos_err > self.skip_tol or rot_err > self.rot_limit_deg:
             print(f"[move_to] SKIPPED {location}: pos {pos_err * 1000:.0f}mm, rot {rot_err:.1f}deg")
             return False
         self.arm.move_joints(q, speed)
@@ -112,11 +143,11 @@ class MovementSystem:
 
         if start == "home":
             self.arm.move_rack(0.0)
-            self.arm.move_joints(self.UP_POSTURE, speed)  # Dont Clip Table
-            self.arm.move_joints(self.WAYPOINT_ARM, speed)
+            self.arm.move_joints(self.up_posture, speed)  # Dont Clip Table
+            self.arm.move_joints(self.waypoint_arm, speed)
 
         elif start == "board":
-            self.arm.move_joints(self.WAYPOINT_ARM, speed)
+            self.arm.move_joints(self.waypoint_arm, speed)
 
     def turn_transition(self, speed=None):
         """
@@ -136,8 +167,8 @@ class MovementSystem:
         :param speed: Motion speed (in m/s)
         :return: NA
         """
-        self.arm.move_joints((0.0, 0.8, 0.0, 0.0, 0.0), speed)
-        self.arm.move_joints(self.REST_ARM, speed)
+        self.arm.move_joints(self.home_stop, speed)
+        self.arm.move_joints(self.rest_arm, speed)
 
 # Testing ==============================================================================================================
 
@@ -149,7 +180,7 @@ def all_targets(sim):
     :param sim: the GenesisSetup object (source of board geometry).
     :return: list of (label, point).
     """
-    z_board = sim.BOARD_TOP_Z + max(h for _, h in sim.PIECE_DIMS.values()) + MovementSystem.TRAVEL_MARGIN  # travel height over pieces
+    z_board = 0.621  # travel height over pieces (matches grasp start_z)
     z_grave = z_board - 0.003  # strip top is 3mm lower
     pts = [(chess.square_name(sq), (*sim.square_center(sq), z_board)) for sq in chess.SQUARES]
     for side in ("left", "right"):
