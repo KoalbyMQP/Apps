@@ -31,7 +31,7 @@ class GenesisSetup:
         """
 
         # Use GPU
-        gs.init(backend=gs.gpu)
+        gs.init(backend=gs.gpu, logging_level="warning")
 
         # Set Variables
         self.robot = None
@@ -54,7 +54,7 @@ class GenesisSetup:
                 camera_pos=(2.2, 1.6, 1.8),             # camera location
                 camera_lookat=(0.0, 0.25, 0.6),         # camera orientation
                 camera_fov=40,                          # camera fov
-                max_FPS=150,                            # simulation max framerate
+                refresh_rate=150,                            # simulation max framerate
             ),
 
             # Configure the rigid body solver options

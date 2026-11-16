@@ -27,9 +27,9 @@ class ArmController(ABC):
                               (-1.58, 0.09, -1.45, 0.0, 1.45),     # grave 7 (farthest left tile)
                               (-1.58, 0.34, -1.38, 0.0, 1.38),     # a8 (black rook)
                               (-1.58, 0.6, -1.1, 0.0, 1.1),        # d8 (black queen)
-                              (-1.58, -1.44, -1.58, 2.61, 1.58),   # grave 3
-                              (-1.57, 0.2, -1.58, 1.93, 1.55),     # d1 (white queen)
-                              (-1.58, 0.17, -1.58, 1.32, 1.58))},  # d4 (mirror of e4)
+                              (-1.58, -1.44, -1.58, -2.61, 1.58),   # grave 3
+                              (-1.57, 0.2, -1.58, -1.93, 1.55),     # d1 (white queen)
+                              (-1.58, 0.17, -1.58, -1.32, 1.58))},  # d4 (mirror of e4)
 
         "right": {"joints":
                       ["r_shoulder_x", "r_shoulder_y", "r_elbow_x", "r_wrist_z", "r_magnet"],

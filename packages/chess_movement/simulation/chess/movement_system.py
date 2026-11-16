@@ -37,8 +37,6 @@ class MovementSystem:
     LEFT_HOME_STOP = (0.0, -0.8, 0.0, 0.0, 0.0)
 
     # Grasp & Release
-    MAGNET_HEIGHT = 0.020
-    GRASP_PRESS = 0.002  # extra mm of rack travel into contact
     BOARD_TOP_Z = 0.535  # board playing surface world Z (must match GenesisSetup; hardware: calibrate once)
     STROKE_EPS = 1e-9  # float slop so a full-stroke press (pawn) isn't rejected by rounding
     RIGHT_TRAVEL_Z = 0.621  # grasp start Z: anchor == right waypoint pad Z (h_max + margin)
@@ -207,42 +205,78 @@ def main():
     sim.setup()
 
     # Controller
-    arm = SimArmController(sim.scene, sim.robot, urdf, "right", sim.piece_ent)
+    r_arm = SimArmController(sim.scene, sim.robot, urdf, "right", sim.piece_ent)
+    l_arm = SimArmController(sim.scene, sim.robot, urdf, "left", sim.piece_ent)
 
     # Movement System
-    ms = MovementSystem(arm)
+    r_ms = MovementSystem(r_arm)
+    l_ms = MovementSystem(l_arm)
 
-    # Test -----------------------------------------------------------------------------------------------------------------
+    # Test Right -------------------------------------------------------------------------------------------------------
 
-    # Operate Robot
-    ms.waypoint("home")
+    """# Operate Robot
+    r_ms.waypoint("home")
 
     # Move Pawn
-    ms.move_to((0.0127, 0.1350, 0.621))
-    ms.toggle_grasp(chess.PAWN)
-    ms.move_to((0.0127, 0.1858, 0.621))
-    ms.toggle_grasp(chess.PAWN)
+    r_ms.move_to((0.0127, 0.1350, 0.621))
+    r_ms.toggle_grasp(chess.PAWN)
+    r_ms.move_to((0.0127, 0.1858, 0.621))
+    r_ms.toggle_grasp(chess.PAWN)
 
     # Move Rook
-    ms.move_to((0.0889, 0.1096, 0.621))
-    ms.toggle_grasp(chess.ROOK)
-    ms.move_to((0.0635, 0.1858, 0.621))
-    ms.toggle_grasp(chess.ROOK)
+    r_ms.move_to((0.0889, 0.1096, 0.621))
+    r_ms.toggle_grasp(chess.ROOK)
+    r_ms.move_to((0.0635, 0.1858, 0.621))
+    r_ms.toggle_grasp(chess.ROOK)
 
     # Move Queen
-    ms.move_to((0.0127, 0.1096, 0.621))
-    ms.toggle_grasp(chess.KING)
-    ms.move_to((-0.0127, 0.1604, 0.621))
-    ms.toggle_grasp(chess.KING)
+    r_ms.move_to((0.0127, 0.1096, 0.621))
+    r_ms.toggle_grasp(chess.KING)
+    r_ms.move_to((-0.0127, 0.1604, 0.621))
+    r_ms.toggle_grasp(chess.KING)
 
     # Move Knight
-    ms.move_to((0.0635, 0.1096, 0.621))
-    ms.toggle_grasp(chess.KNIGHT)
-    ms.move_to((0.0381, 0.1604, 0.621))
-    ms.toggle_grasp(chess.KNIGHT)
+    r_ms.move_to((0.0635, 0.1096, 0.621))
+    r_ms.toggle_grasp(chess.KNIGHT)
+    r_ms.move_to((0.0381, 0.1604, 0.621))
+    r_ms.toggle_grasp(chess.KNIGHT)
 
-    ms.waypoint("board")
-    ms.home()
+    # Home
+    r_ms.waypoint("board")
+    r_ms.home()"""
+
+    # Test Left  -------------------------------------------------------------------------------------------------------
+
+    # Operate Robot
+    l_ms.waypoint("home")
+
+    # Move Pawn
+    l_ms.move_to((-0.0127, 0.1350, 0.621))
+    l_ms.toggle_grasp(chess.PAWN)
+    l_ms.move_to((-0.0127, 0.1858, 0.621))
+    l_ms.toggle_grasp(chess.PAWN)
+
+    # Move Rook
+    l_ms.move_to((-0.0889, 0.1096, 0.621))
+    l_ms.toggle_grasp(chess.ROOK)
+    l_ms.move_to((-0.0635, 0.1858, 0.621))
+    l_ms.toggle_grasp(chess.ROOK)
+
+    # Move Queen
+    l_ms.move_to((-0.0127, 0.1096, 0.621))
+    l_ms.toggle_grasp(chess.KING)
+    l_ms.move_to((0.0127, 0.1604, 0.621))
+    l_ms.toggle_grasp(chess.KING)
+
+    # Move Knight
+    l_ms.move_to((-0.0635, 0.1096, 0.621))
+    l_ms.toggle_grasp(chess.KNIGHT)
+    l_ms.move_to((-0.0381, 0.1604, 0.621))
+    l_ms.toggle_grasp(chess.KNIGHT)
+
+    # Home
+    l_ms.waypoint("board")
+    l_ms.home()
 
 if __name__ == "__main__":
     main()
