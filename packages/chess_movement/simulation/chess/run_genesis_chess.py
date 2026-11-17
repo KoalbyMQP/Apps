@@ -5,7 +5,7 @@ from simulation.genesis_setup import GenesisSetup
 from simulation.sim_arm_controller import SimArmController
 from simulation.chess.movement_system import MovementSystem
 from simulation.chess.chess_operations import ChessOrchestrator
-from simulation.chess.orchestrator import Robot, RobotState
+from simulation.chess.state_machine import Robot, RobotState
 
 
 def print_board(board, label):

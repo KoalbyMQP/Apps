@@ -1,5 +1,5 @@
 # ============================================================
-# orchestrator.py
+# state_machine.py
 # Purpose: State Machine for chess robot logic
 
 import signal
@@ -170,7 +170,7 @@ class Robot:
 
     def check_our_turn(self):
         # logic here (opponent move detected by camera / button press)
-        return False
+        return bool(self.chess.pending_moves)
 
     def handle_our_turn(self):
         self.enter_start_turn()
@@ -188,7 +188,10 @@ class Robot:
         self.current_move = None
 
         try:
-            uci_move = self.chess.get_stockfish_move()
+            uci_move = (
+                self.chess.pending_moves.pop(0)
+                if self.chess.pending_moves else None
+            )
 
             if uci_move is None:
                 print("Game over.")

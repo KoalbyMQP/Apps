@@ -4,12 +4,10 @@
 
 from movement_system import MovementSystem
 import chess
-import chess.engine
 
 class ChessOrchestrator:
 
     def __init__(self, left_movement, right_movement, board_length, board_y0, lift_z=0.7):        
-        self.engine = None
         #self.movement = movement
         self.left_movement = left_movement
         self.right_movement = right_movement
@@ -36,26 +34,9 @@ class ChessOrchestrator:
 
         self.graveyard = []
         self.board = chess.Board()
+        self.pending_moves = []  # UCI strings queued by game.py; state machine pops them
         # self.color = color
         # Color will need to be stored initially in game
-
-    def start_stockfish(self):
-        if self.engine is None:
-            self.engine = chess.engine.SimpleEngine.popen_uci("/usr/games/stockfish")
-    
-    def get_stockfish_move(self):
-        if self.board.is_game_over():
-            return None
-
-        if self.engine is None:
-            self.start_stockfish()
-
-        result = self.engine.play(
-            self.board,
-            chess.engine.Limit(time=1)
-        )
-
-        return result.move.uci()
 
     def board_conversion(self, location):
         #Turn into actual board location

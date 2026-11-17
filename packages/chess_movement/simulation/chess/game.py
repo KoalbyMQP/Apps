@@ -1,5 +1,13 @@
+# Imports & Files
+import os
+import time
+import chess.engine
 from stockfish import Stockfish
-import chess
+from simulation.genesis_setup import GenesisSetup
+from simulation.sim_arm_controller import SimArmController
+from simulation.chess.movement_system import MovementSystem
+from simulation.chess.chess_operations import ChessOrchestrator
+from simulation.chess.state_machine import Robot, RobotState
 
 class Game:
     """
@@ -10,18 +18,51 @@ class Game:
 
 # Constructor ==========================================================================================================
 
-    def __init__(self, typeless_state, robot_team="black"):
+    def __init__(self):
         """
         Summary: Initialize the game object.
 
         :param typeless_state:
         """
+
+        # Setup --------------------------------------------------------------------------------------------------------
+
         self.typeless_state = "BBBBBBBBBBBBBBBB32WWWWWWWWWWWWWWWW"
-        self.robot_team = robot_team
+        self.robot_team = "black"
         self.last_game_state = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" # Default game starting position.
         self.current_game_state = None
         self.new_game_state = None
-        self.stockfish = Stockfish(path="/usr/games/stockfish_logic")
+        self.stockfish = Stockfish(path="/usr/games/stockfish")
+
+        # Initialization -----------------------------------------------------------------------------------------------
+
+        self._DIR = os.path.dirname(os.path.abspath(__file__))
+        self.urdf = os.path.join(self._DIR, "..", "master_assembly_v6", "urdf", "master_assembly_v6.urdf")
+
+        # Simulation
+        self.sim = GenesisSetup(self.urdf)
+        self.sim.setup()
+
+        # Controller
+        self.r_arm = SimArmController(self.sim.scene, self.sim.robot, self.urdf, "right", self.sim.piece_ent)
+        self.l_arm = SimArmController(self.sim.scene, self.sim.robot, self.urdf, "left", self.sim.piece_ent)
+
+        # Movement System
+        self.r_ms = MovementSystem(self.r_arm)
+        self.l_ms = MovementSystem(self.l_arm)
+
+        # Chess Operations
+        self.chess_operations = ChessOrchestrator(
+            left_movement=self.l_ms,
+            right_movement=self.r_ms,
+            board_length=0.2032,
+            board_y0=self.sim.BOARD_Y0,
+            lift_z=0.621
+        )
+
+        # State Machine
+        self.robot = Robot(chess=self.chess_operations)
+        self.robot.initialize_robot()
 
 # Functions ============================================================================================================
 
@@ -56,7 +97,7 @@ class Game:
         :return:
         """
         board = chess.Board(self.current_game_state)
-        move = board.parse_san(move_notation)
+        move = chess.Move.from_uci(move_notation)
         board.push(move)
         self.current_game_state = board.fen()
 
@@ -72,7 +113,7 @@ class Game:
         board = chess.Board(self.current_game_state)
 
         # Start Engine
-        with chess.engine.SimpleEngine.popen_uci(Stockfish) as engine:
+        with chess.engine.SimpleEngine.popen_uci("/usr/games/stockfish") as engine:
 
             # Find best move
             result = engine.play(board, chess.engine.Limit(time=search_time))
@@ -88,15 +129,32 @@ class Game:
 
         :return: NA
         """
-        self.find_current_state(self.typeless_state)
+        if self.current_game_state is None:
+            self.current_game_state = self.last_game_state
+        else:
+            self.last_game_state = self.current_game_state
+            self.current_game_state = self.find_current_state(self.typeless_state)
+
         move = self.ask_stockfish(search_time=0.5)
         self.update_game(move)
-        # give move to state machine.
+        self.chess_operations.pending_moves.append(move)
+
+        try:
+            while True:
+                self.robot.robot_loop()
+                time.sleep(self.robot.loop_period)
+        finally:
+            self.robot.emergency_shutdown()
 
 # Main =================================================================================================================
 
 def main():
-    pass
+
+    # Test Game.py -----------------------------------------------------------------------------------------------------
+
+    game = Game()
+    game.take_turn()
+
 
 if __name__ == "__main__":
     main()

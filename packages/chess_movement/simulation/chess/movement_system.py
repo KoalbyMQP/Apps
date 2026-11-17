@@ -21,10 +21,7 @@ class MovementSystem:
     RIGHT_ROT_LIMIT_DEG = 20.0  # refuse if the pad isn't aimed close enough
     LEFT_ROT_LIMIT_DEG = 20.0  # PLACEHOLDER: copied from right, re-tune after left 48-target run
 
-    # Poses (shoulder_x, shoulder_y, elbow_x, wrist_z, wrist_x). RIGHT = validated r_* joints.
-    # LEFT = mirrored by the poser-verified rule: flip shoulder_x, shoulder_y, wrist_z,
-    # wrist_x; keep elbow_x. (Poser slider order is sx,sy,elbow,wrist_x,wrist_z — the last
-    # two swap when transcribing posed values into these tuples.)
+    # Hard Coded Poses
     RIGHT_CANONICAL_ARM = (1.0, 0.0, 1.0, 0.0, 0.5)
     LEFT_CANONICAL_ARM = (-1.0, 0.0, 1.0, 0.0, -0.5)
     RIGHT_UP_POSTURE = (0.0, 0.8, 0.8, 0.0, 0.0)  # stopover so the wrist clears the graveyard slab
@@ -190,7 +187,7 @@ def all_targets(sim):
 
 def main():
 
-    # Setup ----------------------------------------------------------------------------------------------------------------
+    # Setup ------------------------------------------------------------------------------------------------------------
 
     # Imports & Files
     import os
