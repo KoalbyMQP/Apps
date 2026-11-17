@@ -2,20 +2,9 @@
 # orchestrator.py
 # Purpose: State Machine for chess robot logic
 
-import os
 import signal
 import sys
 import time
-
-# Running this file directly (python orchestrator.py) puts only chess/ on
-# sys.path; add chess/ (for chess_operations) and the project root (for the
-# `simulation.*` package imports) so both direct runs and package runs work.
-_HERE = os.path.dirname(os.path.abspath(__file__))
-_ROOT = os.path.dirname(os.path.dirname(_HERE))
-for _p in (_HERE, _ROOT):
-    if _p not in sys.path:
-        sys.path.insert(0, _p)
-
 import chess
 from chess_operations import ChessOrchestrator
 from enum import Enum, auto
@@ -51,11 +40,6 @@ STATE_TIMEOUTS = {
 MAX_MAGNET_ON_TIME = 20.0    # s, longest one pick->place should ever take
 MAGNET_SETTLE_TIME = 0.2     # s, wait after switching magnet before moving
 SAFE_LIFT_HEIGHT_MM = 40.0   # logic here: clear the tallest piece (king) + margin
-
-# Board geometry (must match GenesisSetup defaults; same values the
-# chess_operations / movement_system smoke tests use).
-BOARD_LENGTH = 0.2032   # m, full board edge
-BOARD_Y0 = 0.135        # m, world Y of rank-0 edge
 
 class Robot:
     def __init__(self, chess=None):
@@ -733,9 +717,6 @@ def main(show_viewer=True):
 
     robot = Robot(chess=chess_operations)
 
-    # Robot plays White; stays in IDLE waiting for the opponent after its turn.
-    robot.check_our_turn = lambda: chess_operations.board.turn == chess.WHITE
-
     # SIGTERM (e.g. systemd stop, `kill`) normally ends the process without
     # running `finally`. Convert it to SystemExit so the finally block runs.
     # Ctrl+C (SIGINT) already raises KeyboardInterrupt, which finally catches.
@@ -785,14 +766,15 @@ def test_real_en_passant_integration():
         board_y0=0.135
     )
 
-    real_chess.board = chess.Board()
+    real_chess.board = chess.Board(
+        "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1"
+    )
 
-    real_chess.get_stockfish_move = lambda: "g1f3"
+    real_chess.get_stockfish_move = lambda: "e5d6"
 
     robot = Robot(chess=real_chess)
 
     def execute_turn():
-
         robot.enter_start_turn()
         robot.handle_instruction_received()
         robot.handle_home_reached()
@@ -820,14 +802,17 @@ def test_real_en_passant_integration():
     print("Starting en passant integration test...")
     execute_turn()
 
-    assert real_chess.board.piece_at(chess.F3) == chess.Piece(chess.KNIGHT, chess.WHITE)
-    assert real_chess.board.piece_at(chess.G1) is None
+    assert real_chess.board.piece_at(chess.D6) == chess.Piece(chess.PAWN, chess.WHITE)
+    assert real_chess.board.piece_at(chess.D5) is None
+    assert real_chess.board.piece_at(chess.E5) is None
     assert real_chess.board.turn == chess.BLACK
 
-    assert len(real_chess.graveyard) == 0
+    assert len(real_chess.graveyard) == 1
+    assert real_chess.graveyard[0][0] == chess.PAWN
+    assert real_chess.graveyard[0][1] == chess.BLACK
 
-    assert movement.grasped == [chess.KNIGHT]
-    assert len(movement.positions) == 2
+    assert movement.grasped == [chess.PAWN, chess.PAWN]
+    assert len(movement.positions) == 4
     assert robot.robot_state == RobotState.IDLE
 
     print("En passant integration test passed!")

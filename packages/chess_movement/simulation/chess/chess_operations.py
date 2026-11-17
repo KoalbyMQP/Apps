@@ -41,7 +41,7 @@ class ChessOrchestrator:
 
     def start_stockfish(self):
         if self.engine is None:
-            self.engine = chess.engine.SimpleEngine.popen_uci("/usr/games/stockfish_logic")
+            self.engine = chess.engine.SimpleEngine.popen_uci("/usr/games/stockfish")
     
     def get_stockfish_move(self):
         if self.board.is_game_over():
@@ -359,7 +359,6 @@ class ChessOrchestrator:
             movement = self.get_movement(arm_side)
             movement.waypoint("home")
 
-
     def toggle_grasp(self, location, arm_side, piece_type=None):
         movement = self.get_movement(arm_side)
 
@@ -413,8 +412,8 @@ def main(show_viewer=True):
     _SIM_DIR = os.path.dirname(_HERE)
     sys.path.insert(0, _SIM_DIR)
 
-    from simulation.genesis_setup import GenesisSetup
-    from simulation.chess.OLD_movement_system import MovementSystem, _np
+    from genesis_setup import GenesisSetup
+    from OG_movement_system import MovementSystem, _np
 
     # --- 1. Define the target: over the middle right side of the board ----
     # Board spans x in [-0.1016, +0.1016], y in [0.135, 0.339]; mid-rank at
@@ -426,8 +425,8 @@ def main(show_viewer=True):
 
     # --- 2. Build the scene (spawn helpers + build only — the settle/idle
     #        loops in setup() are left untouched; we settle here instead). --
-    urdf_file = os.path.join(_SIM_DIR, "master_assembly_v6", "urdf",
-                             "master_assembly_v6.urdf")
+    urdf_file = os.path.join(_SIM_DIR, "master_magnet_hand_v5", "urdf",
+                             "master_magnet_hand_v5.urdf")
     sim = GenesisSetup(urdf_file, show_viewer=show_viewer)
     sim.spawn_plane()
     sim.spawn_board(sim.board_length)
