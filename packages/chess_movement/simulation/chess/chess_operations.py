@@ -8,9 +8,11 @@ import chess.engine
 
 class ChessOrchestrator:
 
-    def __init__(self, movement, board_length, board_y0, lift_z=0.7):
+    def __init__(self, left_movement, right_movement, board_length, board_y0, lift_z=0.7):        
         self.engine = None
-        self.movement = movement
+        #self.movement = movement
+        self.left_movement = left_movement
+        self.right_movement = right_movement
         self.board_length = board_length
         self.BOARD_Y0 = board_y0
         self.SQUARE = board_length / 8
@@ -18,6 +20,10 @@ class ChessOrchestrator:
         self.GRAVEYARD_X0 = 0.30  # World-space X of first graveyard slot
         self.GRAVEYARD_Y = 0.10   # World-space Y of graveyard row
         self.GRAVEYARD_PITCH = 0.02
+        self.HANDOFF_LOCATION = (
+            0.0,
+            board_y0 + board_length + 0.02
+        )
 
         self.PROMOTION_SLOTS = {
             chess.QUEEN: ("graveyard", 0),
@@ -60,18 +66,57 @@ class ChessOrchestrator:
 
         return (world_x, world_y)
 
-    def move_to_square(self, location):
+    def get_arm_side(self, location):
         if location[0] == "graveyard":
             index = location[1]
             col, row = divmod(index, 8)
 
             x = self.board_length / 2 + 0.009 + (col + 0.5) * self.SQUARE
-            y = self.BOARD_Y0 + (row + 0.5) * self.SQUARE
         else:
             x, y = self.board_conversion(location)
 
-        return self.movement.move_to((x, y, self.LIFT_Z))
+        if x < 0:
+            return "left"
+        else:
+            return "right"
+        
+    def select_arm(self, location):
+        if self.get_arm_side(location) == "left":
+            return self.left_movement
+        else:
+            return self.right_movement
 
+    def add_transfer_to_plan(self, plan, start_location, end_location):
+        start_arm = self.get_arm_side(start_location)
+        end_arm = self.get_arm_side(end_location)
+
+        plan.append(("pick", start_location, start_arm))
+
+        if start_arm != end_arm:
+            plan.append(("place", self.HANDOFF_LOCATION, start_arm))
+            plan.append(("pick", self.HANDOFF_LOCATION, end_arm))
+
+        plan.append(("place", end_location, end_arm))
+
+    def move_to_square(self, location, arm_side):
+        movement = self.get_movement(arm_side)
+
+        if location == self.HANDOFF_LOCATION:
+            x, y = self.HANDOFF_LOCATION
+
+        elif location[0] == "graveyard":
+            index = location[1]
+            x = self.GRAVEYARD_X0 + index * self.GRAVEYARD_PITCH
+            y = self.GRAVEYARD_Y
+
+        else:
+            x, y = self.board_conversion(location)
+
+        target = (x, y, movement.travel_z)
+        print(f"Moving {arm_side} arm to: {target}")
+
+        return movement.move_to(target)
+    
     def create_move_plan(self, uci_move):
         move = chess.Move.from_uci(uci_move)
 
@@ -88,72 +133,75 @@ class ChessOrchestrator:
             chess.square_rank(move.to_square)
         )
 
+        plan = []
+
         if move.promotion:
-                    plan = []
-                    graveyard_index = self.CAPTURE_GRAVEYARD_START + len(self.graveyard)
+            graveyard_index = self.CAPTURE_GRAVEYARD_START + len(self.graveyard)
 
-                    if self.board.is_capture(move):
-                        if self.board.is_en_passant(move):
-                            captured_location = (
-                                end_location[0],
-                                start_location[1]
-                            )
-                        else:
-                            captured_location = end_location
+            if self.board.is_capture(move):
+                if self.board.is_en_passant(move):
+                    captured_location = (
+                        end_location[0],
+                        start_location[1]
+                    )
+                else:
+                    captured_location = end_location
 
-                        captured_graveyard = ("graveyard", graveyard_index)
+                captured_graveyard = ("graveyard", graveyard_index)
 
-                        plan.extend([
-                            ("pick", captured_location),
-                            ("place", captured_graveyard)
-                        ])
-
-                        graveyard_index += 1
-
-                    pawn_graveyard = ("graveyard", graveyard_index)
-                    promotion_piece = self.PROMOTION_SLOTS[move.promotion]
-
-                    plan.extend([
-                        ("pick", start_location),
-                        ("place", pawn_graveyard),
-                        ("pick", promotion_piece),
-                        ("place", end_location)
-                    ])
-
-                    return move, plan
-
-        if self.board.is_capture(move):
-            if self.board.is_en_passant(move):
-                captured_location = (
-                    end_location[0],
-                    start_location[1]
+                self.add_transfer_to_plan(
+                    plan, captured_location, captured_graveyard
                 )
 
-                graveyard_location = (
-                    "graveyard",
-                    self.CAPTURE_GRAVEYARD_START + len(self.graveyard)
-                )
+                graveyard_index += 1
 
-                plan = [
-                    ("pick", captured_location),
-                    ("place", graveyard_location),
-                    ("pick", start_location),
-                    ("place", end_location)
-                ]
+            pawn_graveyard = ("graveyard", graveyard_index)
+            promotion_piece = self.PROMOTION_SLOTS[move.promotion]
 
-                return move, plan
+            self.add_transfer_to_plan(
+                plan, start_location, pawn_graveyard
+            )
+
+            self.add_transfer_to_plan(
+                plan, promotion_piece, end_location
+            )
+
+            return move, plan
+
+        if self.board.is_en_passant(move):
+            captured_location = (
+                end_location[0],
+                start_location[1]
+            )
 
             graveyard_location = (
                 "graveyard",
                 self.CAPTURE_GRAVEYARD_START + len(self.graveyard)
             )
 
-            plan = [
-                ("pick", end_location),
-                ("place", graveyard_location),
-                ("pick", start_location),
-                ("place", end_location)
-            ]
+            self.add_transfer_to_plan(
+                plan, captured_location, graveyard_location
+            )
+
+            self.add_transfer_to_plan(
+                plan, start_location, end_location
+            )
+
+            return move, plan
+
+        if self.board.is_capture(move):
+            graveyard_location = (
+                "graveyard",
+                self.CAPTURE_GRAVEYARD_START + len(self.graveyard)
+            )
+
+            self.add_transfer_to_plan(
+                plan, end_location, graveyard_location
+            )
+
+            self.add_transfer_to_plan(
+                plan, start_location, end_location
+            )
 
             return move, plan
 
@@ -165,19 +213,19 @@ class ChessOrchestrator:
             rook_start = (rook_start_file, rank)
             rook_end = (rook_end_file, rank)
 
-            plan = [
-                ("pick", rook_start),
-                ("place", rook_end),
-                ("pick", start_location),
-                ("place", end_location)
-            ]
+            self.add_transfer_to_plan(
+                plan, rook_start, rook_end
+            )
+
+            self.add_transfer_to_plan(
+                plan, start_location, end_location
+            )
 
             return move, plan
 
-        plan = [
-            ("pick", start_location),
-            ("place", end_location)
-        ]
+        self.add_transfer_to_plan(
+            plan, start_location, end_location
+        )
 
         return move, plan
 
@@ -268,6 +316,14 @@ class ChessOrchestrator:
 
         print(f"Executed move: {uci_move}")
 
+    def get_movement(self, arm_side):
+        if arm_side == "left":
+            return self.left_movement
+        elif arm_side == "right":
+            return self.right_movement
+        else:
+            raise ValueError(f"Unknown arm: {arm_side}")
+
     def _physically_move(self, start_world, end_world):
         """
         Summary: (Helper) Perform only the arm actions to carry an object between two
@@ -278,154 +334,63 @@ class ChessOrchestrator:
         :param end_world: (x, y) world coordinate to place at.
         :return: NA
         """
-        self.movement.target(start_world[0], start_world[1], self.LIFT_Z)
-        self.movement.grasp()
-        self.movement.target(end_world[0], end_world[1], self.LIFT_Z)
-        self.movement.release()
-        self.movement.waypoint()
+        movement = self.get_movement(arm_side)
 
-    def go_home(self):
-        self.movement.home()
+        movement.target(start_world[0], start_world[1], self.LIFT_Z)
+        movement.grasp()
+        movement.target(end_world[0], end_world[1], self.LIFT_Z)
+        movement.release()
+        movement.waypoint()
 
-    def go_to_waypoint(self):
-        self.movement.chess_waypoint()
-
-    def grasp_piece(self, location):
-        if location[0] == "graveyard":
-            piece_type = None
-
-            for promotion_type, graveyard_location in self.PROMOTION_SLOTS.items():
-                if graveyard_location == location:
-                    piece_type = promotion_type
-                    break
-
-            if piece_type is None:
-                raise ValueError(f"No promotion piece assigned to {location}")
-
+    def go_home(self, arm_side=None):
+        if arm_side is None:
+            self.left_movement.home()
+            self.right_movement.home()
         else:
-            square = chess.square(*location)
-            piece = self.board.piece_at(square)
+            movement = self.get_movement(arm_side)
+            movement.home()
 
-            if piece is None:
-                raise ValueError(f"No piece at {chess.square_name(square)}")
-
-            piece_type = piece.piece_type
-
-        self.held_piece_type = piece_type
-        return self.movement.grasp(piece_type)
-
-    def promote(self, start_location, end_location, promotion_type):
-        """
-        Summary: Promotion. Retire the pawn to the graveyard, fetch the
-                 promotion piece from its graveyard slot, place it on the
-                 promotion square, and push the move on the logic board.
-
-        :param start_location: (file, rank) of the pawn.
-        :param end_location: (file, rank) of the promotion square.
-        :param promotion_type: piece symbol, e.g. 'q'.
-        :return: NA
-        """
-        piece_type = chess.Piece.from_symbol(promotion_type.upper()).piece_type
-        slot = self.PROMOTION_SLOTS[piece_type]
-        promo_world = (self.GRAVEYARD_X0 + slot[1] * self.GRAVEYARD_PITCH,
-                       self.GRAVEYARD_Y)
-
-        pawn_index = self.CAPTURE_GRAVEYARD_START + len(self.graveyard)
-        pawn_world = (self.GRAVEYARD_X0 + pawn_index * self.GRAVEYARD_PITCH,
-                      self.GRAVEYARD_Y)
-
-        # Pawn out to the graveyard, promotion piece in.
-        self._physically_move(self.board_conversion(start_location), pawn_world)
-        self.graveyard.append((chess.PAWN, self.board.turn,
-                               ("graveyard", pawn_index)))
-        self._physically_move(promo_world, self.board_conversion(end_location))
-
-        self.commit_move(chess.Move(chess.square(*start_location),
-                                    chess.square(*end_location),
-                                    promotion=piece_type))
-
-    def promote_piece(self, move):
-        promoted_piece = move.promotion
-        self.held_piece_type = promoted_piece
-
-    def release_piece(self):
-        return self.movement.release(self.held_piece_type)
-
-    def castle(self, direction, color):
-        # Color here temporarily, will remove once stored as actual variable
-        """
-        Summary: Depending on the 'direction' use the move function to move the King and corresponding Rook to "Castle".
-
-        :param direction: String 'left' or 'right' represents the direction of the castle.
-        :param color: String 'black' or 'white' represents the team being played for.
-        :return: NA
-        """
-        
-        if color == "white":
-            rank = 0
-            king_from, king_to = (4, 0), (6, 0)
-            rook_from, rook_to = ((7, 0), (5, 0)) if direction == "right" else ((0, 0), (3, 0))
-        elif color == "black":
-            rank = 7
-            king_from, king_to = (4, 7), (6, 7)
-            rook_from, rook_to = ((7, 7), (5, 7)) if direction == "right" else ((0, 7), (3, 7))
+    def go_to_waypoint(self, arm_side=None):
+        print(f"Waypoint command sent to: {arm_side}")
+        if arm_side is None:
+            self.left_movement.waypoint("home")
+            self.right_movement.waypoint("home")
         else:
-            print(f"unknown color {color}")
-            return
+            movement = self.get_movement(arm_side)
+            movement.waypoint("home")
 
-        if direction not in ("left", "right"):
-            print(f"unknown castle direction {direction}")
-            return
 
-        # Physically move king, then rook.
-        self._physically_move(self.board_conversion(king_from), self.board_conversion(king_to))
-        self._physically_move(self.board_conversion(rook_from), self.board_conversion(rook_to))
+    def toggle_grasp(self, location, arm_side, piece_type=None):
+        movement = self.get_movement(arm_side)
 
-        move = chess.Move(
-            chess.square(*king_from),
-            chess.square(*king_to)
-        )
+        if piece_type is None:
+            if location == self.HANDOFF_LOCATION:
+                piece_type = self.held_piece_type
 
-        if move not in self.board.legal_moves:
-            raise ValueError(f"Illegal castling move: {move.uci()}")
+                if piece_type is None:
+                    raise ValueError("No piece type stored for handoff")
 
-        self.board.push(move)
+            elif location[0] == "graveyard":
+                for promotion_type, graveyard_location in self.PROMOTION_SLOTS.items():
+                    if graveyard_location == location:
+                        piece_type = promotion_type
+                        break
 
-        # Mirror the castle on the logic board: relocate both pieces and clear
-        # this color's castling rights (a single push per piece would double-count
-        # moves and leave stale rights).
-   #     piece_color = chess.WHITE if color == "white" else chess.BLACK
-   #     board = self.board
-   #     king = board.piece_at(chess.square(*king_from))
-   #     rook = board.piece_at(chess.square(*rook_from))
-   #     board.remove_piece_at(chess.square(*king_from))
-   #     board.remove_piece_at(chess.square(*rook_from))
-   #     board.set_piece_at(chess.square(*king_to), king if king is not None
-   #                        else chess.Piece(chess.KING, piece_color))
-   #     board.set_piece_at(chess.square(*rook_to), rook if rook is not None
-   #                        else chess.Piece(chess.ROOK, piece_color))
-        # Clear this color's castling rights via its rook corner squares.
-   #     corners = (chess.BB_A1 | chess.BB_H1) if piece_color == chess.WHITE \
-   #         else (chess.BB_A8 | chess.BB_H8)
-   #     board.castling_rights &= ~corners
+                if piece_type is None:
+                    raise ValueError(f"No promotion piece assigned to {location}")
 
-    def en_passant(self, start_location, end_location, capture_location):
-        """
-        Summary: Similar to 'take()' use 'remove' and 'move()' to complete a full chess move where one piece captures another,
-                (but the pawn being captured and the final destination of the attacking pawn are not the same).
+            else:
+                square = chess.square(*location)
+                piece = self.board.piece_at(square)
 
-        :param start_location: Original X-Y coordinate of the attacking pawn.
-        :param end_location: New X-Y coordinate of attacking pawn.
-        :param capture_location: X-Y coordinate of the captured pawn.
-        :return: NA
-        """
-        self.remove(capture_location)
-        self.move(start_location, end_location)
+                if piece is None:
+                    raise ValueError(f"No piece at {chess.square_name(square)}")
 
-    def close_stockfish(self):
-        if self.engine is not None:
-            self.engine.quit()
-            self.engine = None
+                piece_type = piece.piece_type
+
+            self.held_piece_type = piece_type
+
+        return movement.toggle_grasp(piece_type)
 
 # (Testing)  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

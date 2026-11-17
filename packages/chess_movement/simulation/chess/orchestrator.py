@@ -67,6 +67,7 @@ class Robot:
 
         self.plan = []              # remaining (action, square) steps this turn
         self.current_action = None
+        self.current_arm_side = None
         self.holding_piece = False
         self.turn_finished = False
 
@@ -211,6 +212,9 @@ class Robot:
                 return
 
             self.current_move, self.plan = self.chess.create_move_plan(uci_move)
+            if not self.plan:
+                self.enter_error("Movement plan is empty")
+                return
 
             print(f"Stockfish move: {uci_move}")
             print(f"Movement plan: {self.plan}")
@@ -234,7 +238,10 @@ class Robot:
         print("-> HOME")
         self.set_state(RobotState.HOME)
         #self.send_motion("home")    # logic here (home pose)
-        self.chess.go_home()
+        #arm_side = self.plan[0][2] if self.plan else self.current_arm_side
+        arm_side = self.plan[0][2] if self.plan else None
+        self.current_arm_side = arm_side
+        self.chess.go_home(arm_side)
         self.handle_home_reached()
 
     def handle_home_reached(self):
@@ -250,7 +257,8 @@ class Robot:
         print("-> WAY_POINT")
         self.set_state(RobotState.WAY_POINT)
         #self.send_motion("way_point")   # logic here (safe hover pose above board)
-        self.chess.go_to_waypoint()
+        arm_side = self.plan[0][2] if self.plan else None
+        self.chess.go_to_waypoint(arm_side)
         self.handle_way_point_reached()
     
     def handle_way_point_reached(self):
@@ -271,9 +279,11 @@ class Robot:
         if step is None:
             self.enter_error("move_hand_to_target with empty plan")
             return
-        action, square = step
+        action, square, arm_side = step
+
         self.current_action = action
         self.current_square = square
+        self.current_arm_side = arm_side
         if action == "pick" and self.holding_piece:
             self.enter_error(f"pick at {square} while already holding a piece")
             return
@@ -288,7 +298,7 @@ class Robot:
         self.set_state(RobotState.MOVE_HAND_TO_TARGET)
         # logic here (travel at SAFE_LIFT_HEIGHT_MM to above square, then descend)
         #self.send_motion(("target", square))
-        self.chess.move_to_square(square)
+        self.chess.move_to_square(square, arm_side)
         self.handle_target_reached()
 
     def handle_target_reached(self):
@@ -306,7 +316,10 @@ class Robot:
         print("-> GRASP")
         self.set_state(RobotState.GRASP)
 
-        self.chess.grasp_piece(self.current_square)
+        self.chess.toggle_grasp(
+            self.current_square,
+            self.current_arm_side
+        )
         self.holding_piece = True
 
         while not self.check_grasp_complete():
@@ -341,9 +354,13 @@ class Robot:
             # just grasped: carry piece to its destination
             self.enter_move_hand_to_target()
         else:
-            # just released
-            go_direct = False  # logic here (next pick close enough to skip waypoint?)
-            if self.plan and go_direct:
+            if self.plan:
+                next_arm_side = self.plan[0][2]
+
+                if next_arm_side != self.current_arm_side:
+                    self.chess.go_to_waypoint(self.current_arm_side)
+                    self.current_arm_side = next_arm_side
+
                 self.enter_move_hand_to_target()
             else:
                 self.enter_way_point()
@@ -351,10 +368,28 @@ class Robot:
     # ------------------------------------------------------------------ #
     # RELEASE
     # ------------------------------------------------------------------ #
+
     def enter_release(self):
         print("-> RELEASE")
         self.set_state(RobotState.RELEASE)
-        self.chess.release_piece()
+
+        self.chess.toggle_grasp(
+            self.current_square,
+            self.current_arm_side,
+            self.chess.held_piece_type
+        )
+        self.holding_piece = False
+
+        next_step = self.plan[1] if len(self.plan) > 1 else None
+        is_handoff = (
+            next_step is not None
+            and next_step[0] == "pick"
+            and next_step[1] == self.chess.HANDOFF_LOCATION
+        )
+
+        if not is_handoff:
+            self.chess.held_piece_type = None
+
         while not self.check_release_complete():
             time.sleep(self.loop_period)
 
@@ -637,35 +672,63 @@ def build_simulation_movement(show_viewer=True):
     from movement_system import MovementSystem
 
     _DIR = os.path.dirname(os.path.abspath(__file__))
-    urdf = os.path.join(_DIR, "..", "master_assembly_v6", "urdf",
-                        "master_assembly_v6.urdf")
+    urdf = os.path.join(
+        _DIR, "..", "master_assembly_v6", "urdf",
+        "master_assembly_v6.urdf"
+    )
 
     sim = GenesisSetup(urdf, show_viewer=show_viewer)
     sim.setup()
 
-    arm = SimArmController(sim.scene, sim.robot, urdf, "right", sim.piece_ent)
-    movement = MovementSystem(arm)
-    return sim, movement
+    left_arm = SimArmController(
+        sim.scene, sim.robot, urdf, "left", sim.piece_ent
+    )
+    right_arm = SimArmController(
+        sim.scene, sim.robot, urdf, "right", sim.piece_ent
+    )
+
+    left_movement = MovementSystem(left_arm)
+    right_movement = MovementSystem(right_arm)
+
+    return sim, left_movement, right_movement
 
 
 def main(show_viewer=True):
-    sim, movement = build_simulation_movement(show_viewer=show_viewer)
+    sim, left_movement, right_movement = build_simulation_movement(
+        show_viewer=show_viewer
+    )
 
     chess_operations = ChessOrchestrator(
-        movement=movement,
+        left_movement=left_movement,
+        right_movement=right_movement,
         board_length=BOARD_LENGTH,
         board_y0=BOARD_Y0,
-        lift_z=0.621          # validated travel height (matches MovementSystem.move_to tests)
+        lift_z=0.621  # validated travel height (matches MovementSystem.move_to tests)
     )
+
+    chess_operations.board = chess.Board(
+        "4k3/8/8/8/3N4/8/8/4K3 w - - 0 1"
+    )
+
+    print("Current board:")
+    print(chess_operations.board)
+    print("Piece on e4:", chess_operations.board.piece_at(chess.E4))
+    print("Piece on d6:", chess_operations.board.piece_at(chess.D6))
+    print("White to move:", chess_operations.board.turn == chess.WHITE)
+    print("Is e4d6 legal:", chess.Move.from_uci("e4d6") in chess_operations.board.legal_moves)
+
 
     # New MovementSystem renamed grasp/release to toggle_grasp (identical
     # extend -> magnet -> retract motion for both; magnet state is the toggle).
-    movement.grasp = movement.toggle_grasp
-    movement.release = movement.toggle_grasp
+    #left_movement.grasp = left_movement.toggle_grasp
+    #left_movement.release = left_movement.toggle_grasp
+
+    #right_movement.grasp = right_movement.toggle_grasp
+    #right_movement.release = right_movement.toggle_grasp
 
     # Stockfish binary (/usr/games/stockfish_logic) not installed here: feed a
     # fixed notation move instead. SAN like "Nf3": chess.Board().parse_san("Nf3").uci()
-    TEST_MOVE = "e2e4"
+    TEST_MOVE = "d4e6"
     chess_operations.get_stockfish_move = lambda: TEST_MOVE
 
     robot = Robot(chess=chess_operations)
@@ -689,8 +752,9 @@ def main(show_viewer=True):
             time.sleep(max(0.0, robot.loop_period - (time.monotonic() - start)))
     finally:
         robot.emergency_shutdown()
-        chess_operations.close_stockfish()
-        movement.home()
+        #chess_operations.close_stockfish()
+        left_movement.home()
+        right_movement.home()
 
 def test_real_en_passant_integration():
     class FakeMovement:
@@ -769,4 +833,4 @@ def test_real_en_passant_integration():
     print("En passant integration test passed!")
 
 if __name__ == "__main__":
-    test_real_en_passant_integration()
+    main()
